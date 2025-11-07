@@ -27,6 +27,36 @@ export const Colors = {
   },
 };
 
+// Colores de la aplicación MetaFit
+export const MetaFitColors = {
+  // Colores de texto
+  text: {
+    primary: '#333333',
+    secondary: '#666666',
+    tertiary: '#999999',
+    white: '#FFFFFF',
+  },
+  // Colores de fondo
+  background: {
+    white: '#FFFFFF',
+    beige: '#f1f0e8',
+    transparent: 'transparent',
+  },
+  // Colores de bordes
+  border: {
+    light: '#E0E0E0',
+    divider: '#F0F0F0',
+    beige: '#f1f0e8',
+  },
+  // Colores de estado
+  error: '#FF0000',
+  // Colores de botones
+  button: {
+    primary: '#96b6c5',
+    active: '#f1f0e8',
+  },
+};
+
 export const Fonts = Platform.select({
   ios: {
     /** iOS `UIFontDescriptorSystemDesignDefault` */
