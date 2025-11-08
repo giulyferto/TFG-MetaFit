@@ -1,4 +1,4 @@
-import { InicioScreen } from '@/components/inicio-screen';
+import { InicioScreen } from '@/components/screens/inicio-screen';
 import { router } from 'expo-router';
 
 export default function HomeScreen() {

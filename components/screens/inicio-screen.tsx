@@ -1,8 +1,8 @@
 import { Image } from "expo-image";
 import { Dimensions, StyleSheet, TouchableOpacity, View } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
+import { ThemedText } from "@/components/ui/themed-text";
+import { ThemedView } from "@/components/ui/themed-view";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 

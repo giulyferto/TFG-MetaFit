@@ -2,9 +2,9 @@ import {
   FormularioInfoNutricional,
   type DatosFormularioNutricional,
 } from "@/components/formulario-info-nutricional";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { ThemedText } from "@/components/ui/themed-text";
+import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { router } from "expo-router";
 import { StyleSheet, TouchableOpacity, View } from "react-native";

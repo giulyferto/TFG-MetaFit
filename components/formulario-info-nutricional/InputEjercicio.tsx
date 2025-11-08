@@ -1,4 +1,4 @@
-import { ThemedText } from "@/components/themed-text";
+import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import { TouchableOpacity, View } from "react-native";
 import { estilos } from "./estilos";
