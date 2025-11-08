@@ -21,6 +21,9 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         <Stack.Screen name="info-nutricional" />
+        <Stack.Screen name="registro-comida" />
+        <Stack.Screen name="registro-manual" />
+        <Stack.Screen name="feedback" />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

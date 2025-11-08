@@ -2,6 +2,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { Image } from "expo-image";
+import { router } from "expo-router";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type Consumo = {
@@ -38,8 +39,8 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
     if (onCargarComidaPress) {
       onCargarComidaPress();
     } else {
-      // Navegar a la pantalla de cargar comida (cuando se cree)
-      console.log("Cargar comida");
+      // Navegar a la pantalla de registro de comida
+      router.push("/registro-comida");
     }
   };
 

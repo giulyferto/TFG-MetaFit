@@ -53,6 +53,7 @@ export const MetaFitColors = {
   // Colores de botones
   button: {
     primary: '#96b6c5',
+    secondary: '#cce6f1',
     active: '#f1f0e8',
   },
   // Colores de calificación
