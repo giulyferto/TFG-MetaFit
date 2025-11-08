@@ -1,10 +1,5 @@
-import { InicioScreen } from '@/components/screens/inicio-screen';
-import { router } from 'expo-router';
+import { HomeScreen } from '@/components/screens/home-screen';
 
-export default function HomeScreen() {
-  const handleStartPress = () => {
-    router.push('/info-nutricional');
-  };
-
-  return <InicioScreen onStartPress={handleStartPress} />;
+export default function HomePage() {
+  return <HomeScreen />;
 }

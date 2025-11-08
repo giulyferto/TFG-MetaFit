@@ -34,7 +34,7 @@ export function RegisterScreen({
     } else {
       // Aquí irá la lógica de registro cuando se integre Firebase
       console.log("Registrar usuario:", { email, password });
-      router.replace("/(tabs)");
+      router.replace("/bienvenida");
     }
   };
 
@@ -49,6 +49,7 @@ export function RegisterScreen({
   const handleSocialRegister = () => {
     // Aquí irá la lógica de registro con Google cuando se integre Firebase
     console.log("Registrar con Google");
+    router.replace("/bienvenida");
   };
 
   return (

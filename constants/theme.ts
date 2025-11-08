@@ -55,6 +55,12 @@ export const MetaFitColors = {
     primary: '#96b6c5',
     active: '#f1f0e8',
   },
+  // Colores de calificación
+  calificacion: {
+    ok: '#4CAF50', 
+    alto: '#FF9800', 
+    bajo: '#F44336', 
+  },
 };
 
 export const Fonts = Platform.select({

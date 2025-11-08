@@ -44,7 +44,7 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
   const handleSocialLogin = () => {
     // Aquí irá la lógica de login con Google cuando se integre Firebase
     console.log("Log in con Google");
-    router.replace("/(tabs)");
+    router.replace("/bienvenida");
   };
 
   return (

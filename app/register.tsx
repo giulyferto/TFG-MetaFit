@@ -4,8 +4,8 @@ import { router } from 'expo-router';
 export default function RegisterPage() {
   const handleRegisterPress = () => {
     // Aquí irá la lógica de registro cuando se integre Firebase
-    // Por ahora, navegamos a la pantalla principal
-    router.replace('/(tabs)');
+    // Por ahora, navegamos a la pantalla de bienvenida
+    router.replace('/bienvenida');
   };
 
   const handleLoginPress = () => {

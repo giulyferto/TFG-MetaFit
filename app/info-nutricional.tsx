@@ -16,7 +16,9 @@ export default function PantallaInfoNutricional() {
 
   const manejarGuardar = (datosFormulario: DatosFormularioNutricional) => {
     console.log("Datos del formulario:", datosFormulario);
-    // Lógica para guardar aquí
+    // Aquí irá la lógica para guardar en Firebase cuando se integre
+    // Por ahora, navegamos a la pantalla de inicio
+    router.replace("/(tabs)");
   };
 
   return (
