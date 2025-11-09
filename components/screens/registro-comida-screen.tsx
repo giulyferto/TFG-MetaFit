@@ -6,27 +6,16 @@ import { router } from "expo-router";
 import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type RegistroComidaScreenProps = {
-  onBuscarComidasAnterioresPress?: () => void;
   onRegistroManualPress?: () => void;
   onCargarImagenComidaPress?: () => void;
   onCargarImagenEtiquetaPress?: () => void;
 };
 
 export function RegistroComidaScreen({
-  onBuscarComidasAnterioresPress,
   onRegistroManualPress,
   onCargarImagenComidaPress,
   onCargarImagenEtiquetaPress,
 }: RegistroComidaScreenProps) {
-  const handleBuscarComidasAnteriores = () => {
-    if (onBuscarComidasAnterioresPress) {
-      onBuscarComidasAnterioresPress();
-    } else {
-      // Navegar a la pantalla de buscar comidas anteriores (cuando se cree)
-      console.log("Buscar comidas anteriores");
-    }
-  };
-
   const handleRegistroManual = () => {
     if (onRegistroManualPress) {
       onRegistroManualPress();
@@ -77,15 +66,6 @@ export function RegistroComidaScreen({
         showsVerticalScrollIndicator={false}
       >
         {/* Botones del menú */}
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={handleBuscarComidasAnteriores}
-        >
-          <ThemedText style={styles.menuButtonText} lightColor={MetaFitColors.text.primary}>
-            Buscar comidas anteriores
-          </ThemedText>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.menuButton} onPress={handleRegistroManual}>
           <ThemedText style={styles.menuButtonText} lightColor={MetaFitColors.text.primary}>
             Registro manual

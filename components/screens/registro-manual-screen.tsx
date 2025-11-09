@@ -1,11 +1,13 @@
+import { BuscarComidasAnteriores } from "@/components/formulario-comida/BuscarComidasAnteriores";
 import { DetallesComidaCard, type DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior } from "@/utils/comidas";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
@@ -20,6 +22,11 @@ export function RegistroManualScreen({
 }: RegistroManualScreenProps) {
   const [tipoComidaSeleccionado, setTipoComidaSeleccionado] =
     useState<TipoComida | null>(null);
+  const [comidasSeleccionadas, setComidasSeleccionadas] = useState<string[]>([]);
+  const [comidaSeleccionadaId, setComidaSeleccionadaId] = useState<string | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [guardarComida, setGuardarComida] = useState(false);
   const [datosComida, setDatosComida] = useState<DatosComida>({
     nombre: "",
     cantidad: "",
@@ -32,13 +39,77 @@ export function RegistroManualScreen({
 
   const tiposComida: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
 
-  const handleAgregarAlDiario = () => {
-    if (onAgregarAlDiarioPress) {
-      onAgregarAlDiarioPress();
-    } else {
-      // Aquí irá la lógica para agregar al diario cuando se integre Firebase
-      console.log("Agregar al diario");
-      router.back();
+  const handleComidaSeleccionada = (comida: ComidaAnterior) => {
+    // Cuando se selecciona una comida, llenar el formulario con sus datos
+    setDatosComida({
+      nombre: comida.nombre || "",
+      cantidad: comida.cantidad || "",
+      energia: comida.energia || "",
+      carb: comida.carb || "",
+      proteina: comida.proteina || "",
+      fibra: comida.fibra || "",
+      grasa: comida.grasa || "",
+    });
+    
+    // Guardar el ID de la comida seleccionada para usarlo en el registro
+    // Esto ya se maneja en onComidasSeleccionadasChange, pero lo mantenemos por si acaso
+    setComidaSeleccionadaId(comida.id);
+    
+    // Si la comida tiene tipo, seleccionarlo también
+    if (comida.tipoComida && tiposComida.includes(comida.tipoComida as TipoComida)) {
+      setTipoComidaSeleccionado(comida.tipoComida as TipoComida);
+    }
+  };
+
+  const handleAgregarAlDiario = async () => {
+    // Validar que haya un tipo de comida seleccionado
+    if (!tipoComidaSeleccionado) {
+      Alert.alert("Error", "Por favor selecciona un tipo de comida");
+      return;
+    }
+
+    // Validar que haya datos de comida (nombre mínimo)
+    if (!datosComida.nombre || datosComida.nombre.trim() === "") {
+      Alert.alert("Error", "Por favor ingresa el nombre de la comida");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Si hay una comida seleccionada del dropdown, usar su ID directamente
+      if (comidaSeleccionadaId) {
+        // Usar el ID de la comida seleccionada sin guardarla nuevamente
+        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId);
+      } else if (guardarComida) {
+        // Si el checkbox está marcado y no hay comida seleccionada, guardar como nueva plantilla
+        const comidaId = await guardarComidaComoPlantilla(datosComida);
+        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId);
+      } else {
+        // Si no está marcado y no hay comida seleccionada, solo guardar el registro sin plantilla
+        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
+      }
+      
+      // Si hay una función callback, llamarla
+      if (onAgregarAlDiarioPress) {
+        onAgregarAlDiarioPress();
+      } else {
+        // Navegar a la pantalla de feedback o volver
+        Alert.alert("Éxito", "Comida agregada al diario correctamente", [
+          {
+            text: "OK",
+            onPress: () => router.back(),
+          },
+        ]);
+      }
+    } catch (error: any) {
+      console.error("Error al guardar comida:", error);
+      Alert.alert(
+        "Error",
+        `No se pudo guardar la comida: ${error.message || "Error desconocido"}`
+      );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -100,20 +171,70 @@ export function RegistroManualScreen({
           ))}
         </View>
 
-        {/* Tarjeta de detalles de comida */}
-        <DetallesComidaCard
-          datos={datosComida}
-          onDatosChange={setDatosComida}
+        {/* Buscar comidas anteriores */}
+        <BuscarComidasAnteriores
+          comidasSeleccionadas={comidasSeleccionadas}
+          onComidasSeleccionadasChange={(ids) => {
+            setComidasSeleccionadas(ids);
+            // Actualizar el ID de la comida seleccionada
+            if (ids.length === 0) {
+              // Si se deselecciona la comida, limpiar el ID
+              setComidaSeleccionadaId(null);
+            } else {
+              // Si hay comidas seleccionadas, usar la última seleccionada (o la primera)
+              // En este caso usamos la última para que sea la más reciente
+              setComidaSeleccionadaId(ids[ids.length - 1]);
+            }
+          }}
+          onComidaSeleccionada={handleComidaSeleccionada}
+          onDropdownToggle={setIsDropdownOpen}
         />
+
+        {/* Tarjeta de detalles de comida - Solo mostrar si el dropdown no está abierto y no hay comidas seleccionadas */}
+        {!isDropdownOpen && comidasSeleccionadas.length === 0 && (
+          <>
+            <DetallesComidaCard
+              datos={datosComida}
+              onDatosChange={setDatosComida}
+            />
+
+            {/* Checkbox para guardar comida como plantilla */}
+            <TouchableOpacity
+              style={styles.checkboxContainer}
+              onPress={() => setGuardarComida(!guardarComida)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.checkbox}>
+                {guardarComida && (
+                  <View style={styles.checkboxChecked}>
+                    <IconSymbol
+                      name="checkmark"
+                      size={16}
+                      color={MetaFitColors.text.white}
+                    />
+                  </View>
+                )}
+              </View>
+              <ThemedText style={styles.checkboxLabel} lightColor={MetaFitColors.text.primary}>
+                Guardar comida
+              </ThemedText>
+            </TouchableOpacity>
+          </>
+        )}
 
         {/* Botones de acción */}
         <TouchableOpacity
-          style={styles.agregarButton}
+          style={[styles.agregarButton, isSaving && styles.agregarButtonDisabled]}
           onPress={handleAgregarAlDiario}
+          disabled={isSaving}
         >
-          <ThemedText style={styles.agregarButtonText} lightColor={MetaFitColors.text.white}>
-            Agregar al diario
-          </ThemedText>
+          {isSaving ? (
+            <ActivityIndicator size="small" color={MetaFitColors.text.white} />
+          ) : (
+            <ThemedText style={styles.agregarButtonText} lightColor={MetaFitColors.text.white}>
+              Agregar al diario
+            </ThemedText>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelarButton} onPress={handleCancelar}>
@@ -193,6 +314,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
+  agregarButtonDisabled: {
+    opacity: 0.6,
+  },
   agregarButtonText: {
     fontSize: 18,
     fontWeight: "600",
@@ -207,6 +331,35 @@ const styles = StyleSheet.create({
   cancelarButtonText: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24,
+    paddingVertical: 8,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: MetaFitColors.border.light,
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.white,
+  },
+  checkboxChecked: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 4,
+    backgroundColor: MetaFitColors.button.primary,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  checkboxLabel: {
+    fontSize: 16,
+    fontWeight: "500",
   },
 });
 

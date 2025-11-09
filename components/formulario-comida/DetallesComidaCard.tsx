@@ -191,7 +191,6 @@ const styles = StyleSheet.create({
   comidaCardHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
   },
   eliminarButton: {
     marginRight: 12,
@@ -225,7 +224,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 5,
   },
   tablaLabel: {
     fontSize: 14,
@@ -245,7 +244,6 @@ const styles = StyleSheet.create({
     color: MetaFitColors.text.primary,
     textAlign: "right",
     minWidth: 60,
-    paddingVertical: 4,
   },
   unidad: {
     fontSize: 14,

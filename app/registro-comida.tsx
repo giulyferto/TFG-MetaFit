@@ -2,11 +2,6 @@ import { RegistroComidaScreen } from '@/components/screens/registro-comida-scree
 import { router } from 'expo-router';
 
 export default function RegistroComidaPage() {
-  const handleBuscarComidasAnteriores = () => {
-    // Navegar a la pantalla de buscar comidas anteriores (cuando se cree)
-    console.log('Buscar comidas anteriores');
-  };
-
   const handleRegistroManual = () => {
     // Navegar a la pantalla de registro manual
     router.push('/registro-manual');
@@ -24,7 +19,6 @@ export default function RegistroComidaPage() {
 
   return (
     <RegistroComidaScreen
-      onBuscarComidasAnterioresPress={handleBuscarComidasAnteriores}
       onRegistroManualPress={handleRegistroManual}
       onCargarImagenComidaPress={handleCargarImagenComida}
       onCargarImagenEtiquetaPress={handleCargarImagenEtiqueta}
