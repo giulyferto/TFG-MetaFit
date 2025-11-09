@@ -2,10 +2,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { auth } from "@/firebase";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -27,14 +30,96 @@ export function RegisterScreen({
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleRegisterPress = () => {
-    if (onRegisterPress) {
-      onRegisterPress();
-    } else {
-      // Aquí irá la lógica de registro cuando se integre Firebase
-      console.log("Registrar usuario:", { email, password });
-      router.replace("/bienvenida");
+  // Validar formato de email
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Validar contraseña (mínimo 6 caracteres)
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 6;
+  };
+
+  const handleRegisterPress = async () => {
+    // Limpiar errores previos
+    setError("");
+
+    // Validaciones
+    if (!email.trim()) {
+      setError("Por favor ingresa tu email");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError("Por favor ingresa un email válido");
+      return;
+    }
+
+    if (!password) {
+      setError("Por favor ingresa una contraseña");
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      setError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Las contraseñas no coinciden");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Registrar usuario en Firebase
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      console.log("Usuario registrado exitosamente:", userCredential.user.email);
+
+      // Si hay un callback personalizado, usarlo
+      if (onRegisterPress) {
+        onRegisterPress();
+      } else {
+        // Navegar a la pantalla de bienvenida
+        router.replace("/bienvenida");
+      }
+    } catch (error: any) {
+      console.error("Error al registrar usuario:", error);
+      
+      // Manejar errores específicos de Firebase
+      let errorMessage = "Error al registrar usuario. Por favor intenta de nuevo.";
+      
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          errorMessage = "Este email ya está registrado. Por favor inicia sesión.";
+          break;
+        case "auth/invalid-email":
+          errorMessage = "El formato del email no es válido.";
+          break;
+        case "auth/weak-password":
+          errorMessage = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
+          break;
+        case "auth/network-request-failed":
+          errorMessage = "Error de conexión. Verifica tu internet.";
+          break;
+        default:
+          errorMessage = error.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+      Alert.alert("Error de registro", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -138,10 +223,23 @@ export function RegisterScreen({
           </View>
         </View>
 
+        {/* Error Message */}
+        {error ? (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+
         {/* Register Button */}
-        <TouchableOpacity style={styles.registerButton} onPress={handleRegisterPress}>
+        <TouchableOpacity
+          style={[styles.registerButton, isLoading && styles.registerButtonDisabled]}
+          onPress={handleRegisterPress}
+          disabled={isLoading}
+        >
           <ThemedText style={styles.registerButtonText} lightColor={MetaFitColors.text.white}>
-            Registrarme
+            {isLoading ? "Registrando..." : "Registrarme"}
           </ThemedText>
         </TouchableOpacity>
 
@@ -262,10 +360,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 30,
   },
+  registerButtonDisabled: {
+    opacity: 0.6,
+  },
   registerButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: MetaFitColors.text.white,
+  },
+  errorContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 12,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MetaFitColors.error,
+  },
+  errorText: {
+    fontSize: 14,
+    color: MetaFitColors.error,
+    textAlign: "center",
   },
   separatorContainer: {
     flexDirection: "row",

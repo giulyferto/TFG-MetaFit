@@ -2,10 +2,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { auth } from "@/firebase";
 import { Image } from "expo-image";
 import { router } from "expo-router";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
 import {
+  Alert,
   ScrollView,
   StyleSheet,
   TextInput,
@@ -22,13 +25,87 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLoginPress = () => {
-    if (onLoginPress) {
-      onLoginPress();
-    } else {
-      // Navegar a la pantalla de inicio después del login
-      router.replace("/(tabs)");
+  // Validar formato de email
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleLoginPress = async () => {
+    // Limpiar errores previos
+    setError("");
+
+    // Validaciones
+    if (!email.trim()) {
+      setError("Por favor ingresa tu email");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      setError("Por favor ingresa un email válido");
+      return;
+    }
+
+    if (!password) {
+      setError("Por favor ingresa tu contraseña");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Autenticar usuario con Firebase
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      console.log("Usuario autenticado exitosamente:", userCredential.user.email);
+
+      // Si hay un callback personalizado, usarlo
+      if (onLoginPress) {
+        onLoginPress();
+      } else {
+        // Navegar a la pantalla de bienvenida después del login exitoso
+        router.replace("/bienvenida");
+      }
+    } catch (error: any) {
+      console.error("Error al iniciar sesión:", error);
+      
+      // Manejar errores específicos de Firebase
+      let errorMessage = "Error al iniciar sesión. Por favor intenta de nuevo.";
+      
+      switch (error.code) {
+        case "auth/user-not-found":
+          errorMessage = "No existe una cuenta con este email.";
+          break;
+        case "auth/wrong-password":
+          errorMessage = "Contraseña incorrecta.";
+          break;
+        case "auth/invalid-email":
+          errorMessage = "El formato del email no es válido.";
+          break;
+        case "auth/invalid-credential":
+          errorMessage = "Email o contraseña incorrectos.";
+          break;
+        case "auth/too-many-requests":
+          errorMessage = "Demasiados intentos fallidos. Por favor intenta más tarde.";
+          break;
+        case "auth/network-request-failed":
+          errorMessage = "Error de conexión. Verifica tu internet.";
+          break;
+        default:
+          errorMessage = error.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+      Alert.alert("Error de inicio de sesión", errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -108,10 +185,23 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
           </View>
         </View>
 
+        {/* Error Message */}
+        {error ? (
+          <View style={styles.errorContainer}>
+            <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>
+              {error}
+            </ThemedText>
+          </View>
+        ) : null}
+
         {/* Login Button */}
-        <TouchableOpacity style={styles.loginButton} onPress={handleLoginPress}>
+        <TouchableOpacity
+          style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+          onPress={handleLoginPress}
+          disabled={isLoading}
+        >
           <ThemedText style={styles.loginButtonText} lightColor={MetaFitColors.text.white}>
-            Log In
+            {isLoading ? "Iniciando sesión..." : "Log In"}
           </ThemedText>
         </TouchableOpacity>
 
@@ -232,10 +322,27 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 30,
   },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
   loginButtonText: {
     fontSize: 18,
     fontWeight: "600",
     color: MetaFitColors.text.white,
+  },
+  errorContainer: {
+    marginTop: 10,
+    marginBottom: 10,
+    padding: 12,
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MetaFitColors.error,
+  },
+  errorText: {
+    fontSize: 14,
+    color: MetaFitColors.error,
+    textAlign: "center",
   },
   separatorContainer: {
     flexDirection: "row",

@@ -2,12 +2,6 @@ import { LoginScreen } from '@/components/screens/login-screen';
 import { router } from 'expo-router';
 
 export default function LoginPage() {
-  const handleLoginPress = () => {
-    // Aquí irá la lógica de autenticación cuando se integre Firebase
-    // Por ahora, navegamos a la pantalla de bienvenida
-    router.replace('/bienvenida');
-  };
-
   const handleRegisterPress = () => {
     // Navegar a la pantalla de registro
     router.push('/register');
@@ -15,7 +9,6 @@ export default function LoginPage() {
 
   return (
     <LoginScreen 
-      onLoginPress={handleLoginPress}
       onRegisterPress={handleRegisterPress}
     />
   );
