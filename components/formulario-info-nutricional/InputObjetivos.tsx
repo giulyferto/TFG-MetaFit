@@ -10,6 +10,7 @@ type InputObjetivosProps = {
   onAbrirModal: () => void;
   onCerrarModal: () => void;
   onSeleccionar: (objetivo: ObjetivoNutricional) => void;
+  editable?: boolean;
 };
 
 export function InputObjetivos({
@@ -18,17 +19,19 @@ export function InputObjetivos({
   onAbrirModal,
   onCerrarModal,
   onSeleccionar,
+  editable = true,
 }: InputObjetivosProps) {
   return (
     <>
       <TouchableOpacity
-        style={estilos.contenedorInput}
-        onPress={onAbrirModal}
-        activeOpacity={0.7}
+        style={[estilos.contenedorInput, !editable && estilos.contenedorInputReadOnly]}
+        onPress={editable ? onAbrirModal : undefined}
+        activeOpacity={editable ? 0.7 : 1}
+        disabled={!editable}
       >
         <View style={estilos.contenedorInputConChevron}>
           <TextInput
-            style={estilos.input}
+            style={[estilos.input, !editable && estilos.inputReadOnly]}
             placeholder="Objetivos"
             placeholderTextColor={MetaFitColors.text.tertiary}
             value={valor}

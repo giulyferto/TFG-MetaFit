@@ -86,12 +86,13 @@ export function RegisterScreen({
 
       console.log("Usuario registrado exitosamente:", userCredential.user.email);
 
+      // Los usuarios nuevos no tienen perfil nutricional, redirigir al formulario
       // Si hay un callback personalizado, usarlo
       if (onRegisterPress) {
         onRegisterPress();
       } else {
-        // Navegar a la pantalla de bienvenida
-        router.replace("/bienvenida");
+        // Navegar directamente al formulario de información nutricional
+        router.replace("/info-nutricional");
       }
     } catch (error: any) {
       console.error("Error al registrar usuario:", error);

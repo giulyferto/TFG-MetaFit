@@ -1,18 +1,65 @@
 import type { DatosFormularioNutricional } from "@/components/formulario-info-nutricional";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-export function useFormularioNutricional() {
+export function useFormularioNutricional(initialData?: Partial<DatosFormularioNutricional>) {
   const [datosFormulario, setDatosFormulario] =
     useState<DatosFormularioNutricional>({
-      edad: "",
-      sexo: "",
-      altura: "",
-      peso: "",
-      ejercicio: "Sí",
-      preferenciaNutricional: "",
-      restricciones: [],
-      objetivos: "",
+      edad: initialData?.edad || "",
+      sexo: initialData?.sexo || "",
+      altura: initialData?.altura || "",
+      peso: initialData?.peso || "",
+      ejercicio: initialData?.ejercicio || "Sí",
+      preferenciaNutricional: initialData?.preferenciaNutricional || "",
+      restricciones: initialData?.restricciones || [],
+      objetivos: initialData?.objetivos || "",
     });
+
+  // Serializar restricciones para usar en dependencias
+  const restriccionesKey = useMemo(
+    () => JSON.stringify(initialData?.restricciones || []),
+    [initialData?.restricciones]
+  );
+
+  // Actualizar datos cuando cambien los datos iniciales
+  useEffect(() => {
+    if (initialData) {
+      const nuevosDatos = {
+        edad: initialData.edad || "",
+        sexo: initialData.sexo || "",
+        altura: initialData.altura || "",
+        peso: initialData.peso || "",
+        ejercicio: initialData.ejercicio || "Sí",
+        preferenciaNutricional: initialData.preferenciaNutricional || "",
+        restricciones: initialData.restricciones || [],
+        objetivos: initialData.objetivos || "",
+      };
+      
+      // Comparar si los datos realmente cambiaron para evitar actualizaciones innecesarias
+      setDatosFormulario((prev) => {
+        const hasChanged = 
+          prev.edad !== nuevosDatos.edad ||
+          prev.sexo !== nuevosDatos.sexo ||
+          prev.altura !== nuevosDatos.altura ||
+          prev.peso !== nuevosDatos.peso ||
+          prev.ejercicio !== nuevosDatos.ejercicio ||
+          prev.preferenciaNutricional !== nuevosDatos.preferenciaNutricional ||
+          prev.objetivos !== nuevosDatos.objetivos ||
+          JSON.stringify(prev.restricciones) !== JSON.stringify(nuevosDatos.restricciones);
+        
+        return hasChanged ? nuevosDatos : prev;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    initialData?.edad,
+    initialData?.sexo,
+    initialData?.altura,
+    initialData?.peso,
+    initialData?.ejercicio,
+    initialData?.preferenciaNutricional,
+    initialData?.objetivos,
+    restriccionesKey,
+  ]);
   const [errorEdad, setErrorEdad] = useState(false);
   const [errorAltura, setErrorAltura] = useState<string | null>(null);
   const [errorPeso, setErrorPeso] = useState<string | null>(null);

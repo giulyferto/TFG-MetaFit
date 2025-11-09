@@ -74,38 +74,6 @@ export default function PerfilScreen() {
       },
     },
     {
-      id: 'notifications',
-      title: 'Notificaciones',
-      icon: 'bell',
-      onPress: () => {
-        Alert.alert('Notificaciones', 'Funcionalidad en desarrollo');
-      },
-    },
-    {
-      id: 'privacy',
-      title: 'Privacidad',
-      icon: 'lock',
-      onPress: () => {
-        Alert.alert('Privacidad', 'Funcionalidad en desarrollo');
-      },
-    },
-    {
-      id: 'help',
-      title: 'Ayuda y Soporte',
-      icon: 'questionmark.circle',
-      onPress: () => {
-        Alert.alert('Ayuda y Soporte', 'Funcionalidad en desarrollo');
-      },
-    },
-    {
-      id: 'about',
-      title: 'Acerca de',
-      icon: 'info.circle',
-      onPress: () => {
-        Alert.alert('Acerca de', 'MetaFit v1.0.0\n\nTu aplicación de seguimiento nutricional.');
-      },
-    },
-    {
       id: 'signout',
       title: 'Cerrar Sesión',
       icon: 'arrow.right.square',

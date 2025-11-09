@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import { useFormularioNutricional } from "@/hooks/useFormularioNutricional";
+import { forwardRef, useImperativeHandle } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { InputAltura } from "./InputAltura";
 import { InputEdad } from "./InputEdad";
@@ -28,11 +29,22 @@ export type DatosFormularioNutricional = {
 
 type PropsFormularioInfoNutricional = {
   alGuardar?: (datosFormulario: DatosFormularioNutricional) => void;
+  isSaving?: boolean;
+  initialData?: Partial<DatosFormularioNutricional>;
+  readOnly?: boolean;
 };
 
-export function FormularioInfoNutricional({
+export type FormularioInfoNutricionalRef = {
+  obtenerDatos: () => DatosFormularioNutricional;
+  guardar: () => void;
+};
+
+export const FormularioInfoNutricional = forwardRef<FormularioInfoNutricionalRef, PropsFormularioInfoNutricional>(({
   alGuardar,
-}: PropsFormularioInfoNutricional) {
+  isSaving = false,
+  initialData,
+  readOnly = false,
+}, ref) => {
   const {
     datosFormulario,
     errorEdad,
@@ -51,15 +63,19 @@ export function FormularioInfoNutricional({
     actualizarAltura,
     actualizarPeso,
     toggleRestriccion,
-  } = useFormularioNutricional();
+  } = useFormularioNutricional(initialData);
 
   const manejarGuardar = () => {
     if (alGuardar) {
       alGuardar(datosFormulario);
-    } else {
-      console.log("Datos del formulario:", datosFormulario);
     }
   };
+
+  // Exponer funciones al componente padre mediante ref
+  useImperativeHandle(ref, () => ({
+    obtenerDatos: () => datosFormulario,
+    guardar: manejarGuardar,
+  }));
 
   const manejarSeleccionarSexo = (sexo: "Masculino" | "Femenino") => {
     actualizarCampo("sexo", sexo);
@@ -86,74 +102,85 @@ export function FormularioInfoNutricional({
           valor={datosFormulario.edad}
           error={errorEdad}
           onChangeText={actualizarEdad}
+          editable={!readOnly}
         />
 
         <InputSexo
           valor={datosFormulario.sexo}
           mostrarModal={mostrarModalSexo}
-          onAbrirModal={() => setMostrarModalSexo(true)}
+          onAbrirModal={() => !readOnly && setMostrarModalSexo(true)}
           onCerrarModal={() => setMostrarModalSexo(false)}
           onSeleccionar={manejarSeleccionarSexo}
+          editable={!readOnly}
         />
 
         <InputAltura
           valor={datosFormulario.altura}
           error={errorAltura}
           onChangeText={actualizarAltura}
+          editable={!readOnly}
         />
 
         <InputPeso
           valor={datosFormulario.peso}
           error={errorPeso}
           onChangeText={actualizarPeso}
+          editable={!readOnly}
         />
 
         <InputEjercicio
           valor={datosFormulario.ejercicio}
-          onChangeValue={(valor) => actualizarCampo("ejercicio", valor)}
+          onChangeValue={(valor) => !readOnly && actualizarCampo("ejercicio", valor)}
+          editable={!readOnly}
         />
 
         <InputPreferenciaNutricional
           valor={datosFormulario.preferenciaNutricional}
           mostrarModal={mostrarModalPreferenciaNutricional}
-          onAbrirModal={() => setMostrarModalPreferenciaNutricional(true)}
+          onAbrirModal={() => !readOnly && setMostrarModalPreferenciaNutricional(true)}
           onCerrarModal={() => setMostrarModalPreferenciaNutricional(false)}
           onSeleccionar={manejarSeleccionarPreferenciaNutricional}
+          editable={!readOnly}
         />
 
         <InputRestricciones
           valores={datosFormulario.restricciones}
           mostrarModal={mostrarModalRestricciones}
-          onAbrirModal={() => setMostrarModalRestricciones(true)}
+          onAbrirModal={() => !readOnly && setMostrarModalRestricciones(true)}
           onCerrarModal={() => setMostrarModalRestricciones(false)}
           onToggleRestriccion={(restriccion: RestriccionNutricional) =>
-            toggleRestriccion(restriccion)
+            !readOnly && toggleRestriccion(restriccion)
           }
+          editable={!readOnly}
         />
 
         <InputObjetivos
           valor={datosFormulario.objetivos}
           mostrarModal={mostrarModalObjetivos}
-          onAbrirModal={() => setMostrarModalObjetivos(true)}
+          onAbrirModal={() => !readOnly && setMostrarModalObjetivos(true)}
           onCerrarModal={() => setMostrarModalObjetivos(false)}
           onSeleccionar={manejarSeleccionarObjetivo}
+          editable={!readOnly}
         />
       </ScrollView>
 
-      <View style={estilos.contenedorBoton}>
-        <TouchableOpacity
-          style={estilos.botonGuardar}
-          onPress={manejarGuardar}
-        >
-          <ThemedText
-            style={estilos.textoBotonGuardar}
-            lightColor={MetaFitColors.text.white}
+      {!readOnly && (
+        <View style={estilos.contenedorBoton}>
+          <TouchableOpacity
+            style={[estilos.botonGuardar, isSaving && estilos.botonGuardarDisabled]}
+            onPress={manejarGuardar}
+            disabled={isSaving}
           >
-            Guardar
-          </ThemedText>
-        </TouchableOpacity>
-      </View>
+            <ThemedText
+              style={estilos.textoBotonGuardar}
+              lightColor={MetaFitColors.text.white}
+            >
+              {isSaving ? "Guardando..." : "Guardar"}
+            </ThemedText>
+          </TouchableOpacity>
+        </View>
+      )}
     </>
   );
-}
+});
 

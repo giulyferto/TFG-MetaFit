@@ -28,6 +28,13 @@ export const estilos = StyleSheet.create({
     backgroundColor: MetaFitColors.background.white,
     color: MetaFitColors.text.primary,
   },
+  inputReadOnly: {
+    backgroundColor: MetaFitColors.border.divider,
+    color: MetaFitColors.text.secondary,
+  },
+  contenedorInputReadOnly: {
+    opacity: 0.7,
+  },
   textoError: {
     fontSize: 12,
     marginTop: 4,
@@ -58,12 +65,19 @@ export const estilos = StyleSheet.create({
     backgroundColor: MetaFitColors.background.white,
     paddingRight: 8,
   },
+  contenedorInputConUnidadReadOnly: {
+    backgroundColor: MetaFitColors.border.divider,
+  },
   inputConUnidad: {
     flex: 1,
     height: 50,
     paddingHorizontal: 16,
     fontSize: 16,
     color: MetaFitColors.text.primary,
+  },
+  inputConUnidadReadOnly: {
+    backgroundColor: MetaFitColors.border.divider,
+    color: MetaFitColors.text.secondary,
   },
   contenedorUnidad: {
     width: 50,
@@ -75,6 +89,9 @@ export const estilos = StyleSheet.create({
     alignItems: "center",
     backgroundColor: MetaFitColors.background.white,
     marginRight: 8,
+  },
+  contenedorUnidadReadOnly: {
+    backgroundColor: MetaFitColors.border.divider,
   },
   textoUnidad: {
     fontSize: 16,
@@ -111,6 +128,9 @@ export const estilos = StyleSheet.create({
     alignItems: "center",
     backgroundColor: MetaFitColors.background.white,
   },
+  botonToggleDisabled: {
+    opacity: 0.5,
+  },
   botonToggleActivo: {
     backgroundColor: MetaFitColors.button.active,
     borderColor: MetaFitColors.background.transparent,
@@ -132,6 +152,9 @@ export const estilos = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
+  },
+  botonGuardarDisabled: {
+    opacity: 0.6,
   },
   textoBotonGuardar: {
     fontSize: 18,

@@ -6,19 +6,83 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { auth, db } from "@/firebase";
 import { router } from "expo-router";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import { doc, setDoc } from "firebase/firestore";
+import { useState } from "react";
+import { Alert, StyleSheet, TouchableOpacity, View } from "react-native";
 
 export default function PantallaInfoNutricional() {
-  const manejarVolver = () => {
-    router.back();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const manejarVolver = async () => {
+    // No permitir volver si el formulario no está completo
+    const user = auth.currentUser;
+    if (user) {
+      // Verificar si tiene perfil completo
+      const { hasCompleteNutritionalProfile } = await import('@/utils/nutritional-profile');
+      const hasProfile = await hasCompleteNutritionalProfile();
+      
+      if (hasProfile) {
+        // Si tiene perfil completo, permitir volver
+        router.back();
+      } else {
+        // Si no tiene perfil completo, no permitir volver (debe completar el formulario)
+        Alert.alert(
+          "Formulario requerido",
+          "Debes completar tu información nutricional para continuar usando la aplicación."
+        );
+      }
+    } else {
+      // Si no hay usuario, redirigir a login
+      router.replace('/login');
+    }
   };
 
-  const manejarGuardar = (datosFormulario: DatosFormularioNutricional) => {
-    console.log("Datos del formulario:", datosFormulario);
-    // Aquí irá la lógica para guardar en Firebase cuando se integre
-    // Por ahora, navegamos a la pantalla de inicio
-    router.replace("/(tabs)");
+  const manejarGuardar = async (datosFormulario: DatosFormularioNutricional) => {
+    const user = auth.currentUser;
+    if (!user) {
+      Alert.alert("Error", "No hay usuario autenticado");
+      return;
+    }
+
+    // Validar que todos los campos requeridos estén completos
+    if (
+      !datosFormulario.edad ||
+      !datosFormulario.sexo ||
+      !datosFormulario.altura ||
+      !datosFormulario.peso ||
+      !datosFormulario.ejercicio ||
+      !datosFormulario.preferenciaNutricional ||
+      !datosFormulario.objetivos
+    ) {
+      Alert.alert("Error", "Por favor completa todos los campos requeridos");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // Guardar el perfil nutricional en Firestore
+      const perfilRef = doc(db, "perfilesNutricionales", user.uid);
+      await setDoc(perfilRef, {
+        ...datosFormulario,
+        userId: user.uid,
+        fechaCreacion: new Date().toISOString(),
+        fechaActualizacion: new Date().toISOString(),
+        completado: true,
+      });
+
+      console.log("Perfil nutricional guardado exitosamente");
+      
+      // Navegar a la pantalla de inicio
+      router.replace("/(tabs)");
+    } catch (error: any) {
+      console.error("Error al guardar perfil nutricional:", error);
+      Alert.alert("Error", "No se pudo guardar el perfil. Por favor intenta de nuevo.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -34,7 +98,7 @@ export default function PantallaInfoNutricional() {
         <View style={estilos.espaciadorEncabezado} />
       </View>
 
-      <FormularioInfoNutricional alGuardar={manejarGuardar} />
+      <FormularioInfoNutricional alGuardar={manejarGuardar} isSaving={isSaving} />
     </ThemedView>
   );
 }

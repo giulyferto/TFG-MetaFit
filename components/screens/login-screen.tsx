@@ -3,6 +3,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { auth } from "@/firebase";
+import { hasCompleteNutritionalProfile } from "@/utils/nutritional-profile";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -66,12 +67,20 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
 
       console.log("Usuario autenticado exitosamente:", userCredential.user.email);
 
+      // Verificar si tiene perfil nutricional completo
+      const hasProfile = await hasCompleteNutritionalProfile();
+
       // Si hay un callback personalizado, usarlo
       if (onLoginPress) {
         onLoginPress();
       } else {
-        // Navegar a la pantalla de bienvenida después del login exitoso
-        router.replace("/bienvenida");
+        // Si no tiene perfil completo, redirigir al formulario
+        // Si tiene perfil completo, redirigir a home
+        if (!hasProfile) {
+          router.replace("/info-nutricional");
+        } else {
+          router.replace("/(tabs)");
+        }
       }
     } catch (error: any) {
       console.error("Error al iniciar sesión:", error);

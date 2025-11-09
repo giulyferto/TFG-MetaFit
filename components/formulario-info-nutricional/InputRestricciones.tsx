@@ -3,8 +3,8 @@ import { MetaFitColors } from "@/constants/theme";
 import { TextInput, TouchableOpacity, View } from "react-native";
 import { estilos } from "./estilos";
 import {
-    ModalRestricciones,
-    type RestriccionNutricional,
+  ModalRestricciones,
+  type RestriccionNutricional,
 } from "./ModalRestricciones";
 
 type InputRestriccionesProps = {
@@ -13,6 +13,7 @@ type InputRestriccionesProps = {
   onAbrirModal: () => void;
   onCerrarModal: () => void;
   onToggleRestriccion: (restriccion: RestriccionNutricional) => void;
+  editable?: boolean;
 };
 
 export function InputRestricciones({
@@ -21,6 +22,7 @@ export function InputRestricciones({
   onAbrirModal,
   onCerrarModal,
   onToggleRestriccion,
+  editable = true,
 }: InputRestriccionesProps) {
   const textoMostrado =
     valores.length > 0
@@ -32,13 +34,14 @@ export function InputRestricciones({
   return (
     <>
       <TouchableOpacity
-        style={estilos.contenedorInput}
-        onPress={onAbrirModal}
-        activeOpacity={0.7}
+        style={[estilos.contenedorInput, !editable && estilos.contenedorInputReadOnly]}
+        onPress={editable ? onAbrirModal : undefined}
+        activeOpacity={editable ? 0.7 : 1}
+        disabled={!editable}
       >
         <View style={estilos.contenedorInputConChevron}>
           <TextInput
-            style={estilos.input}
+            style={[estilos.input, !editable && estilos.inputReadOnly]}
             placeholder="Restricciones"
             placeholderTextColor={MetaFitColors.text.tertiary}
             value={textoMostrado}

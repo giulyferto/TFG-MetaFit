@@ -6,9 +6,10 @@ import { estilos } from "./estilos";
 type InputEjercicioProps = {
   valor: string;
   onChangeValue: (valor: string) => void;
+  editable?: boolean;
 };
 
-export function InputEjercicio({ valor, onChangeValue }: InputEjercicioProps) {
+export function InputEjercicio({ valor, onChangeValue, editable = true }: InputEjercicioProps) {
   return (
     <View style={estilos.contenedorEjercicio}>
       <ThemedText
@@ -22,8 +23,10 @@ export function InputEjercicio({ valor, onChangeValue }: InputEjercicioProps) {
           style={[
             estilos.botonToggle,
             valor === "Sí" && estilos.botonToggleActivo,
+            !editable && estilos.botonToggleDisabled,
           ]}
-          onPress={() => onChangeValue("Sí")}
+          onPress={() => editable && onChangeValue("Sí")}
+          disabled={!editable}
         >
           <ThemedText
             style={estilos.textoBotonToggle}
@@ -36,8 +39,10 @@ export function InputEjercicio({ valor, onChangeValue }: InputEjercicioProps) {
           style={[
             estilos.botonToggle,
             valor === "No" && estilos.botonToggleActivo,
+            !editable && estilos.botonToggleDisabled,
           ]}
-          onPress={() => onChangeValue("No")}
+          onPress={() => editable && onChangeValue("No")}
+          disabled={!editable}
         >
           <ThemedText
             style={estilos.textoBotonToggle}
