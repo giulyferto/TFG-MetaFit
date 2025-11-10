@@ -1,18 +1,57 @@
+import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { generarFeedbackNutricional } from "@/utils/openai";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const FeedbackFoodImage = require("@/assets/images/feedback-food-image.png");
 
 type FeedbackScreenProps = {
   onGuardarPress?: () => void;
+  datosComida?: DatosComida;
 };
 
-export function FeedbackScreen({ onGuardarPress }: FeedbackScreenProps) {
+export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenProps) {
+  const [feedbackText, setFeedbackText] = useState<string>("");
+  const [calificacion, setCalificacion] = useState<"Alto" | "Medio" | "Bajo">("Medio");
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const cargarFeedback = async () => {
+      if (!datosComida) {
+        setError("No se proporcionaron datos de la comida");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const feedback = await generarFeedbackNutricional(datosComida);
+        setFeedbackText(feedback.texto);
+        setCalificacion(feedback.calificacion);
+      } catch (err: any) {
+        console.error("Error al cargar feedback:", err);
+        setError(err.message || "Error al generar el feedback");
+        // Usar un feedback por defecto en caso de error
+        setFeedbackText(
+          "No se pudo generar el feedback en este momento. Por favor, verifica tu conexión a internet e intenta nuevamente."
+        );
+        setCalificacion("Medio");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    cargarFeedback();
+  }, [datosComida]);
+
   const handleGuardar = () => {
     if (onGuardarPress) {
       onGuardarPress();
@@ -22,12 +61,6 @@ export function FeedbackScreen({ onGuardarPress }: FeedbackScreenProps) {
       router.back();
     }
   };
-
-  // Texto hardcodeado por ahora (será generado con OpenAI en el futuro)
-  const feedbackText =
-    "Para un plan orientado al **aumento de masa muscular**, este alimento representa una **buena fuente de energía** que ayuda a reponer el glucógeno muscular después del entrenamiento. Sin embargo, su **aporte proteico es bajo**, por lo que se recomienda combinarlo con una fuente de proteínas magras como pollo, atún, huevo o legumbres, para favorecer la recuperación y el crecimiento muscular.";
-
-  const calificacion = "Alto";
 
   return (
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
@@ -73,20 +106,38 @@ export function FeedbackScreen({ onGuardarPress }: FeedbackScreenProps) {
 
         {/* Texto de feedback */}
         <View style={styles.feedbackContainer}>
-          <Text style={styles.feedbackText}>
-            {feedbackText.split("**").map((part, index) => {
-              // Alternar entre texto normal y texto en negrita
-              if (index % 2 === 0) {
-                return <Text key={index}>{part}</Text>;
-              } else {
-                return (
-                  <Text key={index} style={styles.feedbackBold}>
-                    {part}
-                  </Text>
-                );
-              }
-            })}
-          </Text>
+          {isLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={MetaFitColors.button.primary} />
+              <ThemedText
+                style={styles.loadingText}
+                lightColor={MetaFitColors.text.secondary}
+              >
+                Generando feedback nutricional...
+              </ThemedText>
+            </View>
+          ) : error ? (
+            <View style={styles.errorContainer}>
+              <ThemedText style={styles.errorText} lightColor={MetaFitColors.text.secondary}>
+                {error}
+              </ThemedText>
+            </View>
+          ) : (
+            <Text style={styles.feedbackText}>
+              {feedbackText.split("**").map((part, index) => {
+                // Alternar entre texto normal y texto en negrita
+                if (index % 2 === 0) {
+                  return <Text key={index}>{part}</Text>;
+                } else {
+                  return (
+                    <Text key={index} style={styles.feedbackBold}>
+                      {part}
+                    </Text>
+                  );
+                }
+              })}
+            </Text>
+          )}
         </View>
 
         {/* Botón Guardar Feedback */}
@@ -178,6 +229,24 @@ const styles = StyleSheet.create({
   },
   feedbackBold: {
     fontWeight: "600",
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  errorContainer: {
+    paddingVertical: 20,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: "center",
+    lineHeight: 22,
   },
   guardarButton: {
     backgroundColor: MetaFitColors.button.primary,

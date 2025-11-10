@@ -12,7 +12,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
-  onAgregarAlDiarioPress?: () => void;
+  onAgregarAlDiarioPress?: (datosComida: DatosComida) => void;
   onCancelarPress?: () => void;
 };
 
@@ -90,17 +90,23 @@ export function RegistroManualScreen({
         await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
       }
       
-      // Si hay una función callback, llamarla
+      // Si hay una función callback, llamarla con los datos de la comida
       if (onAgregarAlDiarioPress) {
-        onAgregarAlDiarioPress();
+        onAgregarAlDiarioPress(datosComida);
       } else {
-        // Navegar a la pantalla de feedback o volver
-        Alert.alert("Éxito", "Comida agregada al diario correctamente", [
-          {
-            text: "OK",
-            onPress: () => router.back(),
+        // Navegar a la pantalla de feedback con los datos de la comida
+        router.push({
+          pathname: "/feedback",
+          params: {
+            nombre: datosComida.nombre || "",
+            cantidad: datosComida.cantidad || "",
+            energia: datosComida.energia || "",
+            carb: datosComida.carb || "",
+            proteina: datosComida.proteina || "",
+            fibra: datosComida.fibra || "",
+            grasa: datosComida.grasa || "",
           },
-        ]);
+        });
       }
     } catch (error: any) {
       console.error("Error al guardar comida:", error);

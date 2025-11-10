@@ -1,7 +1,31 @@
+import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
 import { FeedbackScreen } from '@/components/screens/feedback-screen';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 
 export default function FeedbackPage() {
+  const params = useLocalSearchParams<{
+    nombre?: string;
+    cantidad?: string;
+    energia?: string;
+    carb?: string;
+    proteina?: string;
+    fibra?: string;
+    grasa?: string;
+  }>();
+
+  // Construir el objeto DatosComida desde los parámetros
+  const datosComida: DatosComida | undefined = params.nombre
+    ? {
+        nombre: params.nombre || '',
+        cantidad: params.cantidad || '',
+        energia: params.energia || '',
+        carb: params.carb || '',
+        proteina: params.proteina || '',
+        fibra: params.fibra || '',
+        grasa: params.grasa || '',
+      }
+    : undefined;
+
   const handleGuardarPress = () => {
     // Aquí irá la lógica para guardar el feedback cuando se integre Firebase
     console.log('Guardar feedback');
@@ -9,6 +33,6 @@ export default function FeedbackPage() {
     router.back();
   };
 
-  return <FeedbackScreen onGuardarPress={handleGuardarPress} />;
+  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} />;
 }
 
