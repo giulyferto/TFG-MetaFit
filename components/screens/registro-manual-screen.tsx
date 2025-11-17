@@ -12,7 +12,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
-  onAgregarAlDiarioPress?: (datosComida: DatosComida) => void;
+  onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string) => void;
   onCancelarPress?: () => void;
 };
 
@@ -90,9 +90,9 @@ export function RegistroManualScreen({
         await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
       }
       
-      // Si hay una función callback, llamarla con los datos de la comida
+      // Si hay una función callback, llamarla con los datos de la comida y el tipo
       if (onAgregarAlDiarioPress) {
-        onAgregarAlDiarioPress(datosComida);
+        onAgregarAlDiarioPress(datosComida, tipoComidaSeleccionado);
       } else {
         // Navegar a la pantalla de feedback con los datos de la comida
         router.push({
@@ -105,6 +105,7 @@ export function RegistroManualScreen({
             proteina: datosComida.proteina || "",
             fibra: datosComida.fibra || "",
             grasa: datosComida.grasa || "",
+            tipoComida: tipoComidaSeleccionado || "",
           },
         });
       }

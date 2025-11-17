@@ -7,18 +7,20 @@ import { generarFeedbackNutricional } from "@/utils/openai";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import Markdown from "react-native-markdown-display";
 
 const FeedbackFoodImage = require("@/assets/images/feedback-food-image.png");
 
 type FeedbackScreenProps = {
   onGuardarPress?: () => void;
   datosComida?: DatosComida;
+  tipoComida?: string;
 };
 
-export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenProps) {
+export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
-  const [calificacion, setCalificacion] = useState<"Alto" | "Medio" | "Bajo">("Medio");
+  const [calificacion, setCalificacion] = useState<"Alto" | "Medio" | "Bajo" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +35,7 @@ export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenPr
       try {
         setIsLoading(true);
         setError(null);
-        const feedback = await generarFeedbackNutricional(datosComida);
+        const feedback = await generarFeedbackNutricional(datosComida, tipoComida);
         setFeedbackText(feedback.texto);
         setCalificacion(feedback.calificacion);
       } catch (err: any) {
@@ -43,14 +45,14 @@ export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenPr
         setFeedbackText(
           "No se pudo generar el feedback en este momento. Por favor, verifica tu conexión a internet e intenta nuevamente."
         );
-        setCalificacion("Medio");
+        setCalificacion(null);
       } finally {
         setIsLoading(false);
       }
     };
 
     cargarFeedback();
-  }, [datosComida]);
+  }, [datosComida, tipoComida]);
 
   const handleGuardar = () => {
     if (onGuardarPress) {
@@ -79,19 +81,31 @@ export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenPr
         <View style={styles.headerSpacer} />
       </View>
 
-      <View style={styles.content}>
-        {/* Calificación */}
-        <View style={styles.calificacionContainer}>
-          <ThemedText style={styles.calificacionLabel} lightColor={MetaFitColors.text.primary}>
-            Calificación:{" "}
-          </ThemedText>
-          <ThemedText
-            style={styles.calificacionValue}
-            lightColor={MetaFitColors.calificacion.alto}
-          >
-            {calificacion}
-          </ThemedText>
-        </View>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={true}
+      >
+        {/* Calificación - Solo mostrar cuando esté disponible */}
+        {calificacion && (
+          <View style={styles.calificacionContainer}>
+            <ThemedText style={styles.calificacionLabel} lightColor={MetaFitColors.text.primary}>
+              Calificación:{" "}
+            </ThemedText>
+            <ThemedText
+              style={styles.calificacionValue}
+              lightColor={
+                calificacion === "Alto"
+                  ? MetaFitColors.calificacion.alto
+                  : calificacion === "Bajo"
+                  ? MetaFitColors.calificacion.bajo
+                  : MetaFitColors.text.secondary
+              }
+            >
+              {calificacion}
+            </ThemedText>
+          </View>
+        )}
 
         {/* Ilustración del plato */}
         <View style={styles.platoContainer}>
@@ -123,20 +137,9 @@ export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenPr
               </ThemedText>
             </View>
           ) : (
-            <Text style={styles.feedbackText}>
-              {feedbackText.split("**").map((part, index) => {
-                // Alternar entre texto normal y texto en negrita
-                if (index % 2 === 0) {
-                  return <Text key={index}>{part}</Text>;
-                } else {
-                  return (
-                    <Text key={index} style={styles.feedbackBold}>
-                      {part}
-                    </Text>
-                  );
-                }
-              })}
-            </Text>
+            <Markdown style={markdownStyles}>
+              {feedbackText}
+            </Markdown>
           )}
         </View>
 
@@ -146,7 +149,7 @@ export function FeedbackScreen({ onGuardarPress, datosComida }: FeedbackScreenPr
             Guardar Feedback
           </ThemedText>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -177,9 +180,12 @@ const styles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  content: {
     padding: 20,
+    paddingBottom: 40,
   },
   calificacionContainer: {
     flexDirection: "row",
@@ -257,6 +263,85 @@ const styles = StyleSheet.create({
   guardarButtonText: {
     fontSize: 18,
     fontWeight: "600",
+  },
+});
+
+// Estilos para Markdown
+const markdownStyles = StyleSheet.create({
+  body: {
+    fontSize: 14,
+    fontWeight: "400",
+    lineHeight: 22,
+    color: MetaFitColors.text.primary,
+  },
+  heading1: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: MetaFitColors.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  heading2: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: MetaFitColors.text.primary,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  heading3: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  heading4: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  heading5: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  heading6: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  strong: {
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+  },
+  em: {
+    fontStyle: "italic",
+  },
+  text: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: MetaFitColors.text.primary,
+  },
+  bullet_list: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  ordered_list: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  list_item: {
+    marginBottom: 4,
+  },
+  paragraph: {
+    marginTop: 8,
+    marginBottom: 8,
   },
 });
 

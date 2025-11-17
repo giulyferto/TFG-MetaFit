@@ -34,6 +34,7 @@ interface PerfilNutricional {
 
 interface FeedbackRequest {
   datosComida: DatosComida;
+  tipoComida?: string;
   perfilNutricional?: PerfilNutricional;
 }
 
@@ -52,7 +53,7 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
   },
   async (request) => {
     try {
-      const {datosComida, perfilNutricional} = request.data;
+      const {datosComida, tipoComida, perfilNutricional} = request.data;
 
       if (!datosComida) {
         throw new Error("Datos de comida requeridos");
@@ -64,7 +65,7 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
       });
 
       // Construir el prompt
-      const prompt = construirPrompt(datosComida, perfilNutricional);
+      const prompt = construirPrompt(datosComida, tipoComida, perfilNutricional);
 
       // Llamar a la API de OpenAI
       const completion = await openai.chat.completions.create({
@@ -117,11 +118,15 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
  */
 function construirPrompt(
   datosComida: DatosComida,
+  tipoComida?: string,
   perfilNutricional?: PerfilNutricional
 ): string {
   let prompt = `Analiza esta comida y proporciona feedback nutricional:\n\n`;
   prompt += `**Información nutricional:**\n`;
   prompt += `- Nombre: ${datosComida.nombre || "No especificado"}\n`;
+  if (tipoComida) {
+    prompt += `- Tipo de comida: ${tipoComida}\n`;
+  }
   prompt += `- Cantidad: ${datosComida.cantidad || "0"} gr\n`;
   prompt += `- Energía: ${datosComida.energia || "0"} Kcal\n`;
   prompt += `- Carbohidratos: ${datosComida.carb || "0"} gr\n`;
@@ -150,10 +155,18 @@ function construirPrompt(
   }
 
   prompt += `Proporciona un feedback nutricional detallado que incluya:\n`;
-  prompt += `1. Una evaluación general del alimento\n`;
+  prompt += `1. Una evaluación general del alimento`;
+  if (tipoComida) {
+    prompt += ` considerando que es un ${tipoComida.toLowerCase()}`;
+  }
+  prompt += `\n`;
   prompt += `2. Cómo se alinea con los objetivos del usuario (si están disponibles)\n`;
-  prompt += `3. Recomendaciones específicas para mejorar o complementar la comida\n`;
-  prompt += `4. Al final, indica la calificación: [ALTO], [MEDIO] o [BAJO]\n\n`;
+  prompt += `3. Recomendaciones específicas para mejorar o complementar la comida`;
+  if (tipoComida) {
+    prompt += `, teniendo en cuenta que es un ${tipoComida.toLowerCase()}`;
+  }
+  prompt += `\n`;
+  prompt += `4. Al final, indica la calificación: [ALTO] si es muy bueno, [MEDIO] si es regular, o [BAJO] si es malo\n\n`;
   prompt += `Responde en español y usa **texto en negrita** para resaltar conceptos importantes.`;
 
   return prompt;
@@ -161,15 +174,51 @@ function construirPrompt(
 
 /**
  * Extrae la calificación del texto de feedback
+ * Busca primero los marcadores específicos [ALTO], [MEDIO], [BAJO]
+ * y luego busca las palabras cerca del final del texto
  */
 function extraerCalificacion(texto: string): "Alto" | "Medio" | "Bajo" {
   const textoUpper = texto.toUpperCase();
 
-  if (textoUpper.includes("[ALTO]") || textoUpper.includes("ALTO")) {
-    return "Alto";
-  } else if (textoUpper.includes("[BAJO]") || textoUpper.includes("BAJO")) {
+  // Buscar primero los marcadores específicos [ALTO], [MEDIO], [BAJO]
+  // Estos son más confiables porque están en el formato solicitado
+  if (textoUpper.includes("[BAJO]")) {
     return "Bajo";
-  } else {
+  }
+  if (textoUpper.includes("[ALTO]")) {
+    return "Alto";
+  }
+  if (textoUpper.includes("[MEDIO]")) {
     return "Medio";
   }
+
+  // Si no encuentra marcadores, buscar en las últimas 200 caracteres
+  // donde normalmente está la calificación
+  const ultimas200Caracteres = textoUpper.slice(-200);
+  
+  // Buscar patrones como "calificación: [BAJO]" o "calificación: BAJO"
+  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJO|ALTO|MEDIO)\]?/i;
+  const match = ultimas200Caracteres.match(patronCalificacion);
+  
+  if (match) {
+    const calif = match[1].toUpperCase();
+    if (calif === "BAJO") return "Bajo";
+    if (calif === "ALTO") return "Alto";
+    if (calif === "MEDIO") return "Medio";
+  }
+
+  // Buscar las palabras sueltas en las últimas 200 caracteres
+  // Priorizar BAJO sobre ALTO para evitar falsos positivos
+  if (ultimas200Caracteres.includes("BAJO")) {
+    return "Bajo";
+  }
+  if (ultimas200Caracteres.includes("ALTO")) {
+    return "Alto";
+  }
+  if (ultimas200Caracteres.includes("MEDIO")) {
+    return "Medio";
+  }
+
+  // Si no encuentra nada, retornar Medio por defecto
+  return "Medio";
 }

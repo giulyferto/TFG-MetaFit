@@ -11,6 +11,7 @@ export default function FeedbackPage() {
     proteina?: string;
     fibra?: string;
     grasa?: string;
+    tipoComida?: string;
   }>();
 
   // Construir el objeto DatosComida desde los parámetros
@@ -33,6 +34,6 @@ export default function FeedbackPage() {
     router.back();
   };
 
-  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} />;
+  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} tipoComida={params.tipoComida} />;
 }
 
