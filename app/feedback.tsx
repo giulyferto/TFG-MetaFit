@@ -12,6 +12,7 @@ export default function FeedbackPage() {
     fibra?: string;
     grasa?: string;
     tipoComida?: string;
+    registroComidaId?: string;
   }>();
 
   // Construir el objeto DatosComida desde los parámetros
@@ -28,12 +29,10 @@ export default function FeedbackPage() {
     : undefined;
 
   const handleGuardarPress = () => {
-    // Aquí irá la lógica para guardar el feedback cuando se integre Firebase
-    console.log('Guardar feedback');
-    // Navegar de vuelta a la pantalla anterior o a la home
-    router.back();
+    // Después de guardar el feedback, navegar directamente a la pantalla principal
+    router.replace('/(tabs)');
   };
 
-  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} tipoComida={params.tipoComida} />;
+  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} tipoComida={params.tipoComida} registroComidaId={params.registroComidaId} />;
 }
 

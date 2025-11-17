@@ -12,7 +12,7 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
-  onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string) => void;
+  onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
   onCancelarPress?: () => void;
 };
 
@@ -77,22 +77,24 @@ export function RegistroManualScreen({
     setIsSaving(true);
 
     try {
+      let registroComidaId: string;
+      
       // Si hay una comida seleccionada del dropdown, usar su ID directamente
       if (comidaSeleccionadaId) {
         // Usar el ID de la comida seleccionada sin guardarla nuevamente
-        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId);
       } else if (guardarComida) {
         // Si el checkbox está marcado y no hay comida seleccionada, guardar como nueva plantilla
         const comidaId = await guardarComidaComoPlantilla(datosComida);
-        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId);
       } else {
         // Si no está marcado y no hay comida seleccionada, solo guardar el registro sin plantilla
-        await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
       }
       
-      // Si hay una función callback, llamarla con los datos de la comida y el tipo
+      // Si hay una función callback, llamarla con los datos de la comida, el tipo y el ID del registro
       if (onAgregarAlDiarioPress) {
-        onAgregarAlDiarioPress(datosComida, tipoComidaSeleccionado);
+        onAgregarAlDiarioPress(datosComida, tipoComidaSeleccionado, registroComidaId);
       } else {
         // Navegar a la pantalla de feedback con los datos de la comida
         router.push({
@@ -106,6 +108,7 @@ export function RegistroManualScreen({
             fibra: datosComida.fibra || "",
             grasa: datosComida.grasa || "",
             tipoComida: tipoComidaSeleccionado || "",
+            registroComidaId: registroComidaId || "",
           },
         });
       }

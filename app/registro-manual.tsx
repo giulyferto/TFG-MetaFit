@@ -3,7 +3,7 @@ import { RegistroManualScreen } from '@/components/screens/registro-manual-scree
 import { router } from 'expo-router';
 
 export default function RegistroManualPage() {
-  const handleAgregarAlDiario = (datosComida: DatosComida, tipoComida: string) => {
+  const handleAgregarAlDiario = (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => {
     // Navegar a la pantalla de feedback con los datos de la comida
     router.push({
       pathname: '/feedback',
@@ -16,6 +16,7 @@ export default function RegistroManualPage() {
         fibra: datosComida.fibra || '',
         grasa: datosComida.grasa || '',
         tipoComida: tipoComida || '',
+        registroComidaId: registroComidaId || '',
       },
     });
   };

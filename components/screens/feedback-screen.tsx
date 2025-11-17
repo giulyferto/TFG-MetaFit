@@ -3,11 +3,12 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { guardarFeedback } from "@/utils/feedback";
 import { generarFeedbackNutricional } from "@/utils/openai";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 
 const FeedbackFoodImage = require("@/assets/images/feedback-food-image.png");
@@ -16,9 +17,10 @@ type FeedbackScreenProps = {
   onGuardarPress?: () => void;
   datosComida?: DatosComida;
   tipoComida?: string;
+  registroComidaId?: string;
 };
 
-export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida }: FeedbackScreenProps) {
+export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
   const [calificacion, setCalificacion] = useState<"Alto" | "Medio" | "Bajo" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -54,13 +56,36 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida }: Feed
     cargarFeedback();
   }, [datosComida, tipoComida]);
 
-  const handleGuardar = () => {
-    if (onGuardarPress) {
-      onGuardarPress();
-    } else {
-      // Aquí irá la lógica para guardar el feedback cuando se integre Firebase
-      console.log("Guardar feedback");
-      router.back();
+  const handleGuardar = async () => {
+    try {
+      // Validar que tengamos los datos necesarios
+      if (!registroComidaId) {
+        Alert.alert("Error", "No se encontró el registro de comida asociado");
+        return;
+      }
+
+      if (!feedbackText || !calificacion) {
+        Alert.alert("Error", "No hay feedback para guardar");
+        return;
+      }
+
+      // Guardar el feedback en Firebase
+      await guardarFeedback({
+        texto: feedbackText,
+        calificacion: calificacion,
+        registroComidaId: registroComidaId,
+      });
+
+      // Si hay un callback personalizado, llamarlo
+      if (onGuardarPress) {
+        onGuardarPress();
+      } else {
+        // Navegar directamente a la pantalla principal después de guardar
+        router.replace('/(tabs)');
+      }
+    } catch (error: any) {
+      console.error("Error al guardar feedback:", error);
+      Alert.alert("Error", `No se pudo guardar el feedback: ${error.message || "Error desconocido"}`);
     }
   };
 
