@@ -22,7 +22,7 @@ type FeedbackScreenProps = {
 
 export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
-  const [calificacion, setCalificacion] = useState<"Alto" | "Medio" | "Bajo" | null>(null);
+  const [calificacion, setCalificacion] = useState<"Alta" | "Media" | "Baja" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,10 +120,12 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
             <ThemedText
               style={styles.calificacionValue}
               lightColor={
-                calificacion === "Alto"
-                  ? MetaFitColors.calificacion.alto
-                  : calificacion === "Bajo"
-                  ? MetaFitColors.calificacion.bajo
+                calificacion === "Alta"
+                  ? MetaFitColors.calificacion.alta
+                  : calificacion === "Media"
+                  ? MetaFitColors.calificacion.media
+                  : calificacion === "Baja"
+                  ? MetaFitColors.calificacion.baja
                   : MetaFitColors.text.secondary
               }
             >

@@ -5,7 +5,7 @@ import { getNutritionalProfile } from "./nutritional-profile";
 
 export type FeedbackNutricional = {
   texto: string;
-  calificacion: "Alto" | "Medio" | "Bajo";
+  calificacion: "Alta" | "Media" | "Baja";
 };
 
 /**
@@ -72,7 +72,7 @@ export async function generarFeedbackNutricional(
     // Retornar un feedback por defecto en caso de error
     return {
       texto: mensajeError,
-      calificacion: "Medio",
+      calificacion: "Media",
     };
   }
 }

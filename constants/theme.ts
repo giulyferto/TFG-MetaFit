@@ -58,9 +58,9 @@ export const MetaFitColors = {
   },
   // Colores de calificación
   calificacion: {
-    ok: '#4CAF50', 
-    alto: '#FF9800', 
-    bajo: '#F44336', 
+    alta: '#4CAF50', // Verde
+    media: '#FFC107', // Amarillo
+    baja: '#F44336', // Rojo
   },
 };
 

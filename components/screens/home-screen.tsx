@@ -1,39 +1,66 @@
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
+import { obtenerUltimosConsumos, type Consumo } from "@/utils/consumos";
 import { Image } from "expo-image";
-import { router } from "expo-router";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-
-type Consumo = {
-  id: string;
-  calificacion: "OK" | "Alto" | "Bajo";
-  descripcion: string;
-};
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type HomeScreenProps = {
   onCargarComidaPress?: () => void;
 };
 
 export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
-  // Datos de ejemplo - estos vendrán de Firebase más adelante
-  const ultimosConsumos: Consumo[] = [
-    {
-      id: "1",
-      calificacion: "OK",
-      descripcion: "Almuerzo - Lunes 6 de Octubre 2025",
-    },
-    {
-      id: "2",
-      calificacion: "Alto",
-      descripcion: "Snack - Lunes 6 de Octubre 2025",
-    },
-    {
-      id: "3",
-      calificacion: "Bajo",
-      descripcion: "Desayuno - Lunes 6 de Octubre 2025",
-    },
-  ];
+  const [todosLosConsumos, setTodosLosConsumos] = useState<Consumo[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const itemsPerPage = 5;
+
+  const cargarConsumos = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      // Obtener todos los consumos (sin límite)
+      const consumos = await obtenerUltimosConsumos(1000);
+      setTodosLosConsumos(consumos);
+      // Resetear a la primera página cuando se cargan nuevos datos
+      setCurrentPage(1);
+    } catch (error) {
+      console.error("Error al cargar consumos:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Calcular los consumos para la página actual
+  const totalPages = Math.ceil(todosLosConsumos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const consumosPaginaActual = todosLosConsumos.slice(startIndex, endIndex);
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Cargar consumos cuando el componente se monta
+  useEffect(() => {
+    cargarConsumos();
+  }, [cargarConsumos]);
+
+  // Recargar consumos cuando la pantalla recibe foco (cuando el usuario vuelve a esta pantalla)
+  useFocusEffect(
+    useCallback(() => {
+      cargarConsumos();
+    }, [cargarConsumos])
+  );
 
   const handleCargarComidaPress = () => {
     if (onCargarComidaPress) {
@@ -46,15 +73,20 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
 
   const getCalificacionColor = (calificacion: Consumo["calificacion"]) => {
     switch (calificacion) {
-      case "OK":
-        return MetaFitColors.calificacion.ok;
-      case "Alto":
-        return MetaFitColors.calificacion.alto;
-      case "Bajo":
-        return MetaFitColors.calificacion.bajo;
+      case "Alta":
+        return MetaFitColors.calificacion.alta;
+      case "Media":
+        return MetaFitColors.calificacion.media;
+      case "Baja":
+        return MetaFitColors.calificacion.baja;
       default:
-        return MetaFitColors.text.secondary;
+        return MetaFitColors.text.tertiary;
     }
+  };
+
+  const getCalificacionTexto = (calificacion: Consumo["calificacion"]) => {
+    if (!calificacion) return "Sin calificar";
+    return calificacion;
   };
 
   return (
@@ -99,28 +131,107 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
             </View>
 
             {/* Filas de datos */}
-            {ultimosConsumos.map((consumo, index) => (
-              <View key={consumo.id}>
-                <View style={styles.tableRow}>
-                  <ThemedText
-                    style={[
-                      styles.calificacionText,
-                      { color: getCalificacionColor(consumo.calificacion) },
-                    ]}
-                  >
-                    {consumo.calificacion}
-                  </ThemedText>
-                  <ThemedText
-                    style={styles.descripcionText}
-                    lightColor={MetaFitColors.text.primary}
-                  >
-                    {consumo.descripcion}
-                  </ThemedText>
-                </View>
-                {index < ultimosConsumos.length - 1 && <View style={styles.divider} />}
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
+                <ThemedText
+                  style={styles.loadingText}
+                  lightColor={MetaFitColors.text.secondary}
+                >
+                  Cargando consumos...
+                </ThemedText>
               </View>
-            ))}
+            ) : todosLosConsumos.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <ThemedText
+                  style={styles.emptyText}
+                  lightColor={MetaFitColors.text.secondary}
+                >
+                  No hay consumos registrados aún
+                </ThemedText>
+              </View>
+            ) : (
+              consumosPaginaActual.map((consumo, index) => (
+                <View key={consumo.id}>
+                  <View style={styles.tableRow}>
+                    <ThemedText
+                      style={styles.calificacionText}
+                      lightColor={getCalificacionColor(consumo.calificacion)}
+                    >
+                      {getCalificacionTexto(consumo.calificacion)}
+                    </ThemedText>
+                    <ThemedText
+                      style={styles.descripcionText}
+                      lightColor={MetaFitColors.text.primary}
+                    >
+                      {consumo.descripcion}
+                    </ThemedText>
+                  </View>
+                  {index < consumosPaginaActual.length - 1 && <View style={styles.divider} />}
+                </View>
+              ))
+            )}
           </View>
+
+          {/* Controles de paginación */}
+          {!isLoading && todosLosConsumos.length > itemsPerPage && (
+            <View style={styles.paginationContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.paginationButton,
+                  currentPage === 1 && styles.paginationButtonDisabled,
+                ]}
+                onPress={handlePreviousPage}
+                disabled={currentPage === 1}
+              >
+                <ThemedText
+                  style={[
+                    styles.paginationButtonText,
+                    currentPage === 1 && styles.paginationButtonTextDisabled,
+                  ]}
+                  lightColor={
+                    currentPage === 1
+                      ? MetaFitColors.text.tertiary
+                      : MetaFitColors.text.primary
+                  }
+                >
+                  Anterior
+                </ThemedText>
+              </TouchableOpacity>
+
+              <View style={styles.paginationInfo}>
+                <ThemedText
+                  style={styles.paginationText}
+                  lightColor={MetaFitColors.text.secondary}
+                >
+                  Página {currentPage} de {totalPages}
+                </ThemedText>
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.paginationButton,
+                  currentPage === totalPages && styles.paginationButtonDisabled,
+                ]}
+                onPress={handleNextPage}
+                disabled={currentPage === totalPages}
+              >
+                <ThemedText
+                  style={[
+                    styles.paginationButtonText,
+                    currentPage === totalPages && styles.paginationButtonTextDisabled,
+                  ]}
+                  lightColor={
+                    currentPage === totalPages
+                      ? MetaFitColors.text.tertiary
+                      : MetaFitColors.text.primary
+                  }
+                >
+                  Siguiente
+                </ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </ScrollView>
     </ThemedView>
@@ -168,7 +279,7 @@ const styles = StyleSheet.create({
     color: MetaFitColors.text.white,
   },
   consumosSection: {
-    marginTop: 20,
+    marginTop: 5,
   },
   sectionTitle: {
     fontSize: 18,
@@ -214,6 +325,58 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: MetaFitColors.border.divider,
     marginLeft: 16,
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: "center",
+  },
+  paginationContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  paginationButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: MetaFitColors.button.secondary,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  paginationButtonDisabled: {
+    backgroundColor: MetaFitColors.border.divider,
+    opacity: 0.5,
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  paginationButtonTextDisabled: {
+    color: MetaFitColors.text.tertiary,
+  },
+  paginationInfo: {
+    flex: 1,
+    alignItems: "center",
+  },
+  paginationText: {
+    fontSize: 14,
+    fontWeight: "500",
   },
 });
 

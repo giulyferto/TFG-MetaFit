@@ -40,7 +40,7 @@ interface FeedbackRequest {
 
 interface FeedbackResponse {
   texto: string;
-  calificacion: "Alto" | "Medio" | "Bajo";
+  calificacion: "Alta" | "Media" | "Baja";
 }
 
 /**
@@ -166,7 +166,7 @@ function construirPrompt(
     prompt += `, teniendo en cuenta que es un ${tipoComida.toLowerCase()}`;
   }
   prompt += `\n`;
-  prompt += `4. Al final, indica la calificación: [ALTO] si es muy bueno, [MEDIO] si es regular, o [BAJO] si es malo\n\n`;
+  prompt += `4. Al final, indica la calificación: [ALTA] si es muy buena, [MEDIA] si es regular, o [BAJA] si es mala\n\n`;
   prompt += `Responde en español y usa **texto en negrita** para resaltar conceptos importantes.`;
 
   return prompt;
@@ -174,51 +174,51 @@ function construirPrompt(
 
 /**
  * Extrae la calificación del texto de feedback
- * Busca primero los marcadores específicos [ALTO], [MEDIO], [BAJO]
+ * Busca primero los marcadores específicos [ALTA], [MEDIA], [BAJA]
  * y luego busca las palabras cerca del final del texto
  */
-function extraerCalificacion(texto: string): "Alto" | "Medio" | "Bajo" {
+function extraerCalificacion(texto: string): "Alta" | "Media" | "Baja" {
   const textoUpper = texto.toUpperCase();
 
-  // Buscar primero los marcadores específicos [ALTO], [MEDIO], [BAJO]
+  // Buscar primero los marcadores específicos [ALTA], [MEDIA], [BAJA]
   // Estos son más confiables porque están en el formato solicitado
-  if (textoUpper.includes("[BAJO]")) {
-    return "Bajo";
+  if (textoUpper.includes("[BAJA]")) {
+    return "Baja";
   }
-  if (textoUpper.includes("[ALTO]")) {
-    return "Alto";
+  if (textoUpper.includes("[ALTA]")) {
+    return "Alta";
   }
-  if (textoUpper.includes("[MEDIO]")) {
-    return "Medio";
+  if (textoUpper.includes("[MEDIA]")) {
+    return "Media";
   }
 
   // Si no encuentra marcadores, buscar en las últimas 200 caracteres
   // donde normalmente está la calificación
   const ultimas200Caracteres = textoUpper.slice(-200);
   
-  // Buscar patrones como "calificación: [BAJO]" o "calificación: BAJO"
-  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJO|ALTO|MEDIO)\]?/i;
+  // Buscar patrones como "calificación: [BAJA]" o "calificación: BAJA"
+  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJA|ALTA|MEDIA)\]?/i;
   const match = ultimas200Caracteres.match(patronCalificacion);
   
   if (match) {
     const calif = match[1].toUpperCase();
-    if (calif === "BAJO") return "Bajo";
-    if (calif === "ALTO") return "Alto";
-    if (calif === "MEDIO") return "Medio";
+    if (calif === "BAJA") return "Baja";
+    if (calif === "ALTA") return "Alta";
+    if (calif === "MEDIA") return "Media";
   }
 
   // Buscar las palabras sueltas en las últimas 200 caracteres
-  // Priorizar BAJO sobre ALTO para evitar falsos positivos
-  if (ultimas200Caracteres.includes("BAJO")) {
-    return "Bajo";
+  // Priorizar BAJA sobre ALTA para evitar falsos positivos
+  if (ultimas200Caracteres.includes("BAJA")) {
+    return "Baja";
   }
-  if (ultimas200Caracteres.includes("ALTO")) {
-    return "Alto";
+  if (ultimas200Caracteres.includes("ALTA")) {
+    return "Alta";
   }
-  if (ultimas200Caracteres.includes("MEDIO")) {
-    return "Medio";
+  if (ultimas200Caracteres.includes("MEDIA")) {
+    return "Media";
   }
 
-  // Si no encuentra nada, retornar Medio por defecto
-  return "Medio";
+  // Si no encuentra nada, retornar Media por defecto
+  return "Media";
 }
