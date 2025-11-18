@@ -99,6 +99,102 @@ export async function obtenerUltimosConsumos(limite: number = 10): Promise<Consu
 }
 
 /**
+ * Obtiene los consumos filtrados por fecha
+ * @param fecha - Fecha para filtrar (solo se compara día, mes y año)
+ * @returns Promise con array de consumos filtrados
+ */
+export async function obtenerConsumosPorFecha(fecha: Date): Promise<Consumo[]> {
+  const user = auth.currentUser;
+  if (!user) {
+    return [];
+  }
+
+  try {
+    // Normalizar la fecha de búsqueda (solo día, mes, año)
+    const fechaInicio = new Date(fecha);
+    fechaInicio.setHours(0, 0, 0, 0);
+    
+    const fechaFin = new Date(fecha);
+    fechaFin.setHours(23, 59, 59, 999);
+
+    const registrosRef = collection(db, "registrosComidas");
+    const q = query(
+      registrosRef,
+      where("userId", "==", user.uid)
+    );
+
+    const querySnapshot = await getDocs(q);
+    const consumos: Consumo[] = [];
+
+    // Obtener todos los feedbacks del usuario para hacer el join
+    const feedbacksRef = collection(db, "feedback");
+    const feedbacksQuery = query(
+      feedbacksRef,
+      where("userId", "==", user.uid)
+    );
+    const feedbacksSnapshot = await getDocs(feedbacksQuery);
+    
+    // Crear un mapa de registroComidaId -> calificacion
+    const feedbacksMap = new Map<string, "Alta" | "Media" | "Baja">();
+    feedbacksSnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.registroComidaId && data.calificacion) {
+        feedbacksMap.set(data.registroComidaId, data.calificacion);
+      }
+    });
+
+    // Procesar cada registro de comida y filtrar por fecha
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      const registroId = doc.id;
+      
+      // Filtrar por fecha
+      const fechaCreacion = data.fechaCreacion 
+        ? new Date(data.fechaCreacion)
+        : new Date();
+      
+      // Comparar solo día, mes y año
+      if (fechaCreacion < fechaInicio || fechaCreacion > fechaFin) {
+        return;
+      }
+      
+      // Obtener la calificación del feedback asociado
+      const calificacion = feedbacksMap.get(registroId) || null;
+      
+      const fechaFormateada = formatearFecha(fechaCreacion);
+      
+      // Crear la descripción
+      const tipoComida = data.tipoComida || "Comida";
+      const nombre = data.nombre || "";
+      const descripcion = nombre 
+        ? `${tipoComida} - ${nombre} - ${fechaFormateada}`
+        : `${tipoComida} - ${fechaFormateada}`;
+
+      consumos.push({
+        id: registroId,
+        calificacion: calificacion,
+        descripcion: descripcion,
+        fechaCreacion: data.fechaCreacion || new Date().toISOString(),
+        tipoComida: tipoComida,
+        nombre: nombre,
+      });
+    });
+
+    // Ordenar por fecha de creación (más reciente primero)
+    consumos.sort((a, b) => {
+      const fechaA = new Date(a.fechaCreacion).getTime();
+      const fechaB = new Date(b.fechaCreacion).getTime();
+      return fechaB - fechaA; // Orden descendente (más reciente primero)
+    });
+
+    return consumos;
+  } catch (error) {
+    console.error("Error al obtener consumos por fecha:", error);
+    return [];
+  }
+}
+
+/**
  * Formatea una fecha a formato dd/mm/yyyy
  */
 function formatearFecha(fecha: Date): string {
