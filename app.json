@@ -38,6 +38,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "La app necesita acceso a tus fotos para cargar imágenes de comida.",
+          "cameraPermission": "La app necesita acceso a tu cámara para tomar fotos de comida."
+        }
       ]
     ],
     "experiments": {
