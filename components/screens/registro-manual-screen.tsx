@@ -12,11 +12,13 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
+  datosIniciales?: DatosComida;
   onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
   onCancelarPress?: () => void;
 };
 
 export function RegistroManualScreen({
+  datosIniciales,
   onAgregarAlDiarioPress,
   onCancelarPress,
 }: RegistroManualScreenProps) {
@@ -27,15 +29,17 @@ export function RegistroManualScreen({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [guardarComida, setGuardarComida] = useState(false);
-  const [datosComida, setDatosComida] = useState<DatosComida>({
-    nombre: "",
-    cantidad: "",
-    energia: "",
-    carb: "",
-    proteina: "",
-    fibra: "",
-    grasa: "",
-  });
+  const [datosComida, setDatosComida] = useState<DatosComida>(
+    datosIniciales || {
+      nombre: "",
+      cantidad: "",
+      energia: "",
+      carb: "",
+      proteina: "",
+      fibra: "",
+      grasa: "",
+    }
+  );
 
   const tiposComida: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
 

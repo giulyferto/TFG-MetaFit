@@ -43,6 +43,16 @@ interface FeedbackResponse {
   calificacion: "Alta" | "Media" | "Baja";
 }
 
+interface AnalizarImagenRequest {
+  imagenBase64: string;
+}
+
+interface AnalizarImagenResponse {
+  esPlatoComida: boolean;
+  datosComida?: DatosComida;
+  mensaje?: string;
+}
+
 /**
  * Genera feedback nutricional usando OpenAI
  */
@@ -75,9 +85,9 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
             role: "system",
             content:
               "Eres un nutricionista experto que proporciona feedback nutricional personalizado. " +
-              "Tu respuesta debe ser clara, educativa y útil. " +
-              "Usa formato markdown con **texto en negrita** para resaltar conceptos importantes. " +
-              "Responde siempre en español.",
+              "Tu respuesta debe ser BREVE, clara y concisa (máximo 150 palabras). " +
+              "Usa formato markdown con **texto en negrita** solo para los títulos de sección. " +
+              "Responde siempre en español y asegúrate de incluir la calificación al final.",
           },
           {
             role: "user",
@@ -85,7 +95,7 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
           },
         ],
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 400, // Reducido porque ahora pedimos respuestas más breves (máx 150 palabras)
       });
 
       const respuesta = completion.choices[0]?.message?.content || "";
@@ -154,20 +164,37 @@ function construirPrompt(
     prompt += `\n`;
   }
 
-  prompt += `Proporciona un feedback nutricional detallado que incluya:\n`;
-  prompt += `1. Una evaluación general del alimento`;
+  prompt += `Proporciona un feedback nutricional BREVE y conciso que incluya:\n\n`;
+  prompt += `1. **Evaluación del alimento** (2-3 oraciones máximo):`;
   if (tipoComida) {
-    prompt += ` considerando que es un ${tipoComida.toLowerCase()}`;
+    prompt += ` Evalúa considerando que es un ${tipoComida.toLowerCase()}.`;
   }
-  prompt += `\n`;
-  prompt += `2. Cómo se alinea con los objetivos del usuario (si están disponibles)\n`;
-  prompt += `3. Recomendaciones específicas para mejorar o complementar la comida`;
+  prompt += `\n\n`;
+  prompt += `2. **Alineación con objetivos** (1-2 oraciones máximo):`;
+  if (perfilNutricional?.objetivos) {
+    prompt += ` Explica brevemente cómo se alinea con los objetivos del usuario.`;
+  } else {
+    prompt += ` Si no hay objetivos específicos, omite este punto.`;
+  }
+  prompt += `\n\n`;
+  prompt += `3. **Recomendaciones** (2-3 oraciones máximo):`;
   if (tipoComida) {
-    prompt += `, teniendo en cuenta que es un ${tipoComida.toLowerCase()}`;
+    prompt += ` Sugiere mejoras específicas para este ${tipoComida.toLowerCase()}.`;
+  } else {
+    prompt += ` Sugiere mejoras específicas.`;
   }
-  prompt += `\n`;
-  prompt += `4. Al final, indica la calificación: [ALTA] si es muy buena, [MEDIA] si es regular, o [BAJA] si es mala\n\n`;
-  prompt += `Responde en español y usa **texto en negrita** para resaltar conceptos importantes.`;
+  prompt += `\n\n`;
+  prompt += `4. **Calificación** (OBLIGATORIO al final, en una línea separada):\n`;
+  prompt += `   Debes terminar EXACTAMENTE con una de estas líneas:\n`;
+  prompt += `   - "Calificación: [ALTA]"\n`;
+  prompt += `   - "Calificación: [MEDIA]"\n`;
+  prompt += `   - "Calificación: [BAJA]"\n\n`;
+  prompt += `REGLAS IMPORTANTES:\n`;
+  prompt += `- Sé BREVE: máximo 150 palabras en total\n`;
+  prompt += `- Usa **texto en negrita** solo para los títulos de cada sección\n`;
+  prompt += `- La calificación DEBE estar al final, en una línea separada\n`;
+  prompt += `- Usa SOLO [ALTA], [MEDIA] o [BAJA] - NO uses "MEDIO" u otras variantes\n`;
+  prompt += `- Responde en español\n`;
 
   return prompt;
 }
@@ -197,28 +224,168 @@ function extraerCalificacion(texto: string): "Alta" | "Media" | "Baja" {
   const ultimas200Caracteres = textoUpper.slice(-200);
   
   // Buscar patrones como "calificación: [BAJA]" o "calificación: BAJA"
-  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJA|ALTA|MEDIA)\]?/i;
+  // También buscar "MEDIO" como variante de "MEDIA"
+  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJA|ALTA|MEDIA|MEDIO)\]?/i;
   const match = ultimas200Caracteres.match(patronCalificacion);
   
   if (match) {
     const calif = match[1].toUpperCase();
     if (calif === "BAJA") return "Baja";
     if (calif === "ALTA") return "Alta";
-    if (calif === "MEDIA") return "Media";
+    // Normalizar "MEDIO" a "Media"
+    if (calif === "MEDIA" || calif === "MEDIO") return "Media";
   }
 
   // Buscar las palabras sueltas en las últimas 200 caracteres
   // Priorizar BAJA sobre ALTA para evitar falsos positivos
+  // También buscar variantes como "MEDIO" que OpenAI podría usar
   if (ultimas200Caracteres.includes("BAJA")) {
     return "Baja";
   }
   if (ultimas200Caracteres.includes("ALTA")) {
     return "Alta";
   }
-  if (ultimas200Caracteres.includes("MEDIA")) {
+  // Buscar tanto "MEDIA" como "MEDIO" (variante que OpenAI podría usar)
+  if (ultimas200Caracteres.includes("MEDIA") || ultimas200Caracteres.includes("MEDIO")) {
     return "Media";
   }
 
   // Si no encuentra nada, retornar Media por defecto
   return "Media";
 }
+
+/**
+ * Analiza una imagen para determinar si es un plato de comida y extraer datos nutricionales
+ */
+export const analizarImagenComida = onCall<AnalizarImagenRequest>(
+  {
+    secrets: [openaiApiKey],
+    cors: true,
+  },
+  async (request) => {
+    try {
+      const { imagenBase64 } = request.data;
+
+      if (!imagenBase64) {
+        throw new Error("No se proporcionó una imagen");
+      }
+
+      // Inicializar OpenAI
+      const openai = new OpenAI({
+        apiKey: openaiApiKey.value(),
+      });
+
+      logger.info("Analizando imagen con OpenAI Vision");
+
+      // Llamar a OpenAI Vision API
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Eres un experto nutricionista. Analiza esta imagen y determina si es un plato de comida.
+
+INSTRUCCIONES:
+1. Si la imagen NO muestra un plato de comida (por ejemplo, es un objeto, un animal, un paisaje, etc.), responde EXACTAMENTE con este JSON:
+{
+  "esPlatoComida": false,
+  "mensaje": "La imagen no parece ser un plato de comida"
+}
+
+2. Si la imagen SÍ muestra un plato de comida, analiza la comida visible y estima sus valores nutricionales. Responde EXACTAMENTE con este JSON:
+{
+  "esPlatoComida": true,
+  "datosComida": {
+    "nombre": "nombre descriptivo del plato o comida",
+    "cantidad": "cantidad estimada en gramos (solo número, sin unidades)",
+    "energia": "energía en Kcal (solo número, sin unidades)",
+    "carb": "carbohidratos en gramos (solo número, sin unidades)",
+    "proteina": "proteínas en gramos (solo número, sin unidades)",
+    "fibra": "fibra en gramos (solo número, sin unidades)",
+    "grasa": "grasa en gramos (solo número, sin unidades)"
+  }
+}
+
+IMPORTANTE:
+- Responde ÚNICAMENTE con el JSON, sin texto adicional antes o después
+- Los valores numéricos deben ser números como strings (ej: "250", "450", "30")
+- Si no puedes estimar un valor, usa "0"
+- El nombre debe ser descriptivo y claro`,
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${imagenBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      });
+
+      const contenido = response.choices[0]?.message?.content;
+      if (!contenido) {
+        throw new Error("No se recibió respuesta de OpenAI");
+      }
+
+      logger.info("Respuesta de OpenAI recibida", { contenido });
+
+      // Parsear la respuesta JSON
+      let resultado: AnalizarImagenResponse;
+      try {
+        // Limpiar el contenido para extraer solo el JSON
+        const jsonMatch = contenido.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          resultado = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No se encontró JSON en la respuesta");
+        }
+      } catch (parseError) {
+        logger.error("Error al parsear respuesta de OpenAI", parseError);
+        throw new Error("Error al procesar la respuesta de la IA");
+      }
+
+      if (!resultado.esPlatoComida) {
+        return {
+          esPlatoComida: false,
+          mensaje: resultado.mensaje || "La imagen no parece ser un plato de comida",
+        };
+      }
+
+      // Validar que todos los campos estén presentes
+      if (!resultado.datosComida) {
+        throw new Error("No se pudieron extraer los datos nutricionales");
+      }
+
+      // Asegurar que todos los campos tengan valores por defecto
+      const datosComida: DatosComida = {
+        nombre: resultado.datosComida.nombre || "",
+        cantidad: resultado.datosComida.cantidad || "0",
+        energia: resultado.datosComida.energia || "0",
+        carb: resultado.datosComida.carb || "0",
+        proteina: resultado.datosComida.proteina || "0",
+        fibra: resultado.datosComida.fibra || "0",
+        grasa: resultado.datosComida.grasa || "0",
+      };
+
+      logger.info("Imagen analizada exitosamente", {
+        esPlatoComida: true,
+        nombre: datosComida.nombre,
+      });
+
+      return {
+        esPlatoComida: true,
+        datosComida,
+      };
+    } catch (error: any) {
+      logger.error("Error al analizar imagen", error);
+      throw new Error(
+        `Error al analizar la imagen: ${error.message || "Error desconocido"}`
+      );
+    }
+  }
+);

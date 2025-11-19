@@ -77,3 +77,48 @@ export async function generarFeedbackNutricional(
   }
 }
 
+export type AnalizarImagenResponse = {
+  esPlatoComida: boolean;
+  datosComida?: DatosComida;
+  mensaje?: string;
+};
+
+/**
+ * Analiza una imagen para determinar si es un plato de comida y extraer datos nutricionales
+ * @param imagenBase64 - Imagen en formato base64
+ * @returns Promise con el resultado del análisis
+ */
+export async function analizarImagenComida(
+  imagenBase64: string
+): Promise<AnalizarImagenResponse> {
+  try {
+    // Obtener la función callable
+    const analizarImagen = httpsCallable<
+      { imagenBase64: string },
+      AnalizarImagenResponse
+    >(functions, "analizarImagenComida");
+
+    // Llamar a la función
+    const result = await analizarImagen({ imagenBase64 });
+
+    return result.data;
+  } catch (error: any) {
+    console.error("Error al analizar imagen:", error);
+    
+    // Proporcionar mensajes de error más específicos
+    let mensajeError = "No se pudo analizar la imagen en este momento.";
+    
+    if (error.code === "functions/internal") {
+      mensajeError = "Error interno del servidor. Por favor, intenta nuevamente más tarde.";
+    } else if (error.code === "functions/not-found") {
+      mensajeError = "La función no está disponible. Por favor, contacta al soporte.";
+    } else if (error.code === "functions/permission-denied") {
+      mensajeError = "No tienes permiso para usar esta función. Por favor, inicia sesión.";
+    } else if (error.message?.includes("network") || error.message?.includes("connection")) {
+      mensajeError = "Error de conexión. Por favor, verifica tu internet e intenta nuevamente.";
+    }
+    
+    throw new Error(mensajeError);
+  }
+}
+
