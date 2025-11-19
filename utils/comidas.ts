@@ -1,6 +1,6 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { auth, db } from "@/firebase";
-import { addDoc, collection, getDocs, limit, orderBy, query } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 
 export type ComidaAnterior = {
   id: string;
@@ -16,19 +16,22 @@ export type ComidaAnterior = {
 };
 
 /**
- * Obtiene las comidas plantilla desde Firebase
- * Las comidas plantilla no tienen userId, son reutilizables
+ * Obtiene las comidas guardadas anteriormente del usuario actual
  * @param limite - Número máximo de comidas a obtener (por defecto 50)
- * @returns Promise con array de comidas anteriores
+ * @returns Promise con array de comidas anteriores del usuario
  */
 export async function obtenerComidasAnteriores(limite: number = 50): Promise<ComidaAnterior[]> {
+  const user = auth.currentUser;
+  if (!user) {
+    return [];
+  }
+
   try {
     const comidasRef = collection(db, "comidas");
-    // Buscar todas las comidas plantilla (sin userId) ordenadas por fecha
+    // Buscar comidas del usuario actual (sin orderBy para evitar índice compuesto)
     const q = query(
       comidasRef,
-      orderBy("fechaCreacion", "desc"),
-      limit(limite)
+      where("userId", "==", user.uid)
     );
     
     const querySnapshot = await getDocs(q);
@@ -36,24 +39,29 @@ export async function obtenerComidasAnteriores(limite: number = 50): Promise<Com
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // Solo incluir comidas que no tengan userId (son plantillas)
-      if (!data.userId) {
-        comidas.push({
-          id: doc.id,
-          nombre: data.nombre || "",
-          cantidad: data.cantidad || "",
-          energia: data.energia || "",
-          carb: data.carb || "",
-          proteina: data.proteina || "",
-          fibra: data.fibra || "",
-          grasa: data.grasa || "",
-          tipoComida: data.tipoComida || "",
-          fechaCreacion: data.fechaCreacion || "",
-        });
-      }
+      comidas.push({
+        id: doc.id,
+        nombre: data.nombre || "",
+        cantidad: data.cantidad || "",
+        energia: data.energia || "",
+        carb: data.carb || "",
+        proteina: data.proteina || "",
+        fibra: data.fibra || "",
+        grasa: data.grasa || "",
+        tipoComida: data.tipoComida || "",
+        fechaCreacion: data.fechaCreacion || "",
+      });
     });
     
-    return comidas;
+    // Ordenar en memoria por fecha de creación (más reciente primero)
+    comidas.sort((a, b) => {
+      const fechaA = a.fechaCreacion ? new Date(a.fechaCreacion).getTime() : 0;
+      const fechaB = b.fechaCreacion ? new Date(b.fechaCreacion).getTime() : 0;
+      return fechaB - fechaA; // Orden descendente (más reciente primero)
+    });
+    
+    // Aplicar el límite después de ordenar
+    return comidas.slice(0, limite);
   } catch (error) {
     console.error("Error al obtener comidas anteriores:", error);
     return [];
@@ -65,14 +73,18 @@ export type DatosComidaParaGuardar = DatosComida & {
 };
 
 /**
- * Guarda una comida como plantilla (sin userId ni tipoComida)
- * Solo contiene los datos nutricionales para reutilizar
+ * Guarda una comida como plantilla del usuario actual
  * @param datosComida - Datos de la comida a guardar
  * @returns Promise con el ID del documento creado
  */
 export async function guardarComidaComoPlantilla(
   datosComida: DatosComida
 ): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("No hay usuario autenticado");
+  }
+
   try {
     const comidasRef = collection(db, "comidas");
     const datosParaGuardar = {
@@ -83,6 +95,7 @@ export async function guardarComidaComoPlantilla(
       proteina: datosComida.proteina || "",
       fibra: datosComida.fibra || "",
       grasa: datosComida.grasa || "",
+      userId: user.uid,
       fechaCreacion: new Date().toISOString(),
     };
 

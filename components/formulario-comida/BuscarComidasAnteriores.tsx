@@ -4,11 +4,11 @@ import { MetaFitColors } from "@/constants/theme";
 import { obtenerComidasAnteriores, type ComidaAnterior } from "@/utils/comidas";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    FlatList,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type BuscarComidasAnterioresProps = {
@@ -101,56 +101,55 @@ export function BuscarComidasAnteriores({
               </ThemedText>
             </View>
           ) : (
-            <View style={styles.listContainer}>
-              <FlatList
-                data={comidas}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => {
-                  const isSelected = comidasSeleccionadas.includes(item.id);
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.comidaItem,
-                        isSelected && styles.comidaItemSelected,
-                      ]}
-                      onPress={() => toggleComida(item.id)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={styles.checkbox}>
-                        {isSelected && (
-                          <View style={styles.checkboxChecked}>
-                            <IconSymbol
-                              name="checkmark"
-                              size={16}
-                              color={MetaFitColors.text.white}
-                            />
-                          </View>
-                        )}
-                      </View>
-                      <View style={styles.comidaInfo}>
+            <ScrollView
+              style={styles.listContainer}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+            >
+              {comidas.map((item) => {
+                const isSelected = comidasSeleccionadas.includes(item.id);
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[
+                      styles.comidaItem,
+                      isSelected && styles.comidaItemSelected,
+                    ]}
+                    onPress={() => toggleComida(item.id)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.checkbox}>
+                      {isSelected && (
+                        <View style={styles.checkboxChecked}>
+                          <IconSymbol
+                            name="checkmark"
+                            size={16}
+                            color={MetaFitColors.text.white}
+                          />
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.comidaInfo}>
+                      <ThemedText
+                        style={styles.comidaNombre}
+                        lightColor={MetaFitColors.text.primary}
+                      >
+                        {item.nombre || "Sin nombre"}
+                      </ThemedText>
+                      {item.tipoComida && (
                         <ThemedText
-                          style={styles.comidaNombre}
-                          lightColor={MetaFitColors.text.primary}
+                          style={styles.comidaTipo}
+                          lightColor={MetaFitColors.text.secondary}
                         >
-                          {item.nombre || "Sin nombre"}
+                          {item.tipoComida}
                         </ThemedText>
-                        {item.tipoComida && (
-                          <ThemedText
-                            style={styles.comidaTipo}
-                            lightColor={MetaFitColors.text.secondary}
-                          >
-                            {item.tipoComida}
-                          </ThemedText>
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }}
-                style={styles.list}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={true}
-              />
-            </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           )}
         </View>
       )}
@@ -199,9 +198,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     maxHeight: 300,
-  },
-  list: {
-    flexGrow: 0,
   },
   listContent: {
     padding: 8,
