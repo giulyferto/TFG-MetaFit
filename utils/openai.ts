@@ -122,3 +122,48 @@ export async function analizarImagenComida(
   }
 }
 
+export type AnalizarCodigoBarrasResponse = {
+  esCodigoBarras: boolean;
+  datosComida?: DatosComida;
+  mensaje?: string;
+};
+
+/**
+ * Analiza una imagen para reconocer un código de barras y extraer información del producto nutricional
+ * @param imagenBase64 - Imagen en formato base64
+ * @returns Promise con el resultado del análisis
+ */
+export async function analizarCodigoBarras(
+  imagenBase64: string
+): Promise<AnalizarCodigoBarrasResponse> {
+  try {
+    // Obtener la función callable
+    const analizarCodigo = httpsCallable<
+      { imagenBase64: string },
+      AnalizarCodigoBarrasResponse
+    >(functions, "analizarCodigoBarras");
+
+    // Llamar a la función
+    const result = await analizarCodigo({ imagenBase64 });
+
+    return result.data;
+  } catch (error: any) {
+    console.error("Error al analizar código de barras:", error);
+    
+    // Proporcionar mensajes de error más específicos
+    let mensajeError = "No se pudo analizar el código de barras en este momento.";
+    
+    if (error.code === "functions/internal") {
+      mensajeError = "Error interno del servidor. Por favor, intenta nuevamente más tarde.";
+    } else if (error.code === "functions/not-found") {
+      mensajeError = "La función no está disponible. Por favor, contacta al soporte.";
+    } else if (error.code === "functions/permission-denied") {
+      mensajeError = "No tienes permiso para usar esta función. Por favor, inicia sesión.";
+    } else if (error.message?.includes("network") || error.message?.includes("connection")) {
+      mensajeError = "Error de conexión. Por favor, verifica tu internet e intenta nuevamente.";
+    }
+    
+    throw new Error(mensajeError);
+  }
+}
+

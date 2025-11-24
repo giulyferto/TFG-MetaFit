@@ -53,6 +53,16 @@ interface AnalizarImagenResponse {
   mensaje?: string;
 }
 
+interface AnalizarCodigoBarrasRequest {
+  imagenBase64: string;
+}
+
+interface AnalizarCodigoBarrasResponse {
+  esCodigoBarras: boolean;
+  datosComida?: DatosComida;
+  mensaje?: string;
+}
+
 /**
  * Genera feedback nutricional usando OpenAI
  */
@@ -385,6 +395,160 @@ IMPORTANTE:
       logger.error("Error al analizar imagen", error);
       throw new Error(
         `Error al analizar la imagen: ${error.message || "Error desconocido"}`
+      );
+    }
+  }
+);
+
+/**
+ * Analiza una imagen para reconocer un código de barras y extraer información del producto nutricional
+ */
+export const analizarCodigoBarras = onCall<AnalizarCodigoBarrasRequest>(
+  {
+    secrets: [openaiApiKey],
+    cors: true,
+  },
+  async (request) => {
+    try {
+      const { imagenBase64 } = request.data;
+
+      if (!imagenBase64) {
+        throw new Error("No se proporcionó una imagen");
+      }
+
+      // Inicializar OpenAI
+      const openai = new OpenAI({
+        apiKey: openaiApiKey.value(),
+      });
+
+      logger.info("Analizando código de barras con OpenAI Vision");
+
+      // Llamar a OpenAI Vision API
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Eres un experto en reconocimiento de códigos de barras y productos nutricionales. Analiza esta imagen y determina si contiene un código de barras de un producto alimenticio.
+
+INSTRUCCIONES:
+1. Si la imagen NO contiene un código de barras visible o no es un producto alimenticio, responde EXACTAMENTE con este JSON:
+{
+  "esCodigoBarras": false,
+  "mensaje": "No se pudo reconocer un código de barras en la imagen"
+}
+
+2. Si la imagen SÍ contiene un código de barras de un producto alimenticio:
+   - Intenta leer el código de barras (si es visible)
+   - Identifica el producto alimenticio
+   - Extrae la información nutricional del producto (puedes inferirla basándote en el tipo de producto si no está visible)
+   - Responde EXACTAMENTE con este JSON:
+{
+  "esCodigoBarras": true,
+  "datosComida": {
+    "nombre": "nombre del producto identificado",
+    "cantidad": "cantidad por porción en gramos (solo número, sin unidades)",
+    "energia": "energía en Kcal por porción (solo número, sin unidades)",
+    "carb": "carbohidratos en gramos por porción (solo número, sin unidades)",
+    "proteina": "proteínas en gramos por porción (solo número, sin unidades)",
+    "fibra": "fibra en gramos por porción (solo número, sin unidades)",
+    "grasa": "grasa en gramos por porción (solo número, sin unidades)"
+  }
+}
+
+IMPORTANTE:
+- Responde ÚNICAMENTE con el JSON, sin texto adicional antes o después
+- Los valores numéricos deben ser números como strings (ej: "250", "450", "30")
+- Si no puedes determinar un valor específico, usa valores estimados razonables basados en el tipo de producto
+- El nombre debe ser descriptivo y claro del producto identificado
+- Si puedes leer el código de barras, úsalo para identificar mejor el producto`,
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:image/jpeg;base64,${imagenBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+        max_tokens: 500,
+      });
+
+      const contenido = response.choices[0]?.message?.content;
+      if (!contenido) {
+        throw new Error("No se recibió respuesta de OpenAI");
+      }
+
+      logger.info("Respuesta de OpenAI recibida", { contenido });
+
+      // Parsear la respuesta JSON
+      let resultado: AnalizarCodigoBarrasResponse;
+      try {
+        // Limpiar el contenido para extraer solo el JSON
+        const jsonMatch = contenido.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          resultado = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No se encontró JSON en la respuesta");
+        }
+      } catch (parseError) {
+        logger.error("Error al parsear respuesta de OpenAI", parseError);
+        throw new Error("Error al procesar la respuesta de la IA");
+      }
+
+      if (!resultado.esCodigoBarras) {
+        return {
+          esCodigoBarras: false,
+          mensaje: resultado.mensaje || "No se pudo reconocer un código de barras en la imagen",
+        };
+      }
+
+      // Validar que todos los campos estén presentes
+      if (!resultado.datosComida) {
+        throw new Error("No se pudieron extraer los datos nutricionales");
+      }
+
+      // Asegurar que todos los campos tengan valores por defecto
+      const datosComida: DatosComida = {
+        nombre: resultado.datosComida.nombre || "",
+        cantidad: resultado.datosComida.cantidad || "0",
+        energia: resultado.datosComida.energia || "0",
+        carb: resultado.datosComida.carb || "0",
+        proteina: resultado.datosComida.proteina || "0",
+        fibra: resultado.datosComida.fibra || "0",
+        grasa: resultado.datosComida.grasa || "0",
+      };
+
+      logger.info("Código de barras analizado exitosamente", {
+        esCodigoBarras: true,
+        nombre: datosComida.nombre,
+      });
+
+      return {
+        esCodigoBarras: true,
+        datosComida,
+      };
+    } catch (error: any) {
+      logger.error("Error al analizar código de barras", {
+        error: error.message,
+        stack: error.stack,
+        code: error.code,
+      });
+      
+      // Si es un error conocido, lanzarlo con más contexto
+      if (error.message) {
+        throw new Error(
+          `Error al analizar el código de barras: ${error.message}`
+        );
+      }
+      
+      // Error desconocido
+      throw new Error(
+        "Error al analizar el código de barras: Error desconocido"
       );
     }
   }

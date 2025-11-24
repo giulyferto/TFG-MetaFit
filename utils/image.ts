@@ -1,5 +1,6 @@
 import * as FileSystem from 'expo-file-system';
-import { Platform } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Alert, Platform } from 'react-native';
 
 /**
  * Convierte una imagen desde una URI a base64
@@ -68,5 +69,129 @@ export async function convertirImagenABase64(uri: string): Promise<string> {
     console.error('URI que falló:', uri);
     throw new Error(`No se pudo convertir la imagen a base64: ${error.message || 'Error desconocido'}`);
   }
+}
+
+/**
+ * Tipo para el callback que procesa la imagen seleccionada
+ */
+export type ProcesarImagenCallback = (asset: {
+  uri: string;
+  base64?: string;
+}) => Promise<void> | void;
+
+/**
+ * Solicita permisos de cámara y galería
+ * @returns Promise<boolean> - true si los permisos fueron otorgados, false en caso contrario
+ */
+export async function requestImagePermissions(): Promise<boolean> {
+  if (Platform.OS !== 'web') {
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: mediaLibraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (cameraStatus !== 'granted' || mediaLibraryStatus !== 'granted') {
+      Alert.alert(
+        'Permisos necesarios',
+        'Se necesitan permisos de cámara y galería para cargar imágenes.'
+      );
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Muestra un diálogo para seleccionar una imagen desde la galería o tomar una foto con la cámara
+ * @param onImageSelected - Callback que se ejecuta cuando se selecciona una imagen
+ * @param options - Opciones opcionales para personalizar el diálogo y la selección de imagen
+ */
+export async function seleccionarImagen(
+  onImageSelected: ProcesarImagenCallback,
+  options?: {
+    title?: string;
+    message?: string;
+    allowsEditing?: boolean;
+    aspect?: [number, number];
+    quality?: number;
+  }
+): Promise<void> {
+  const hasPermission = await requestImagePermissions();
+  if (!hasPermission) return;
+
+  const {
+    title = 'Seleccionar imagen',
+    message = '¿De dónde quieres cargar la imagen?',
+    allowsEditing = true,
+    aspect = [4, 3],
+    quality = 1,
+  } = options || {};
+
+  Alert.alert(
+    title,
+    message,
+    [
+      {
+        text: 'Cancelar',
+        style: 'cancel',
+      },
+        {
+          text: 'Galería',
+          onPress: async () => {
+            let result;
+            try {
+              result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing,
+                aspect,
+                quality,
+                base64: true,
+              });
+            } catch (error) {
+              console.error('Error al seleccionar imagen de galería:', error);
+              Alert.alert('Error', 'No se pudo seleccionar la imagen de la galería');
+              return;
+            }
+
+            // Ejecutar el callback fuera del try-catch de ImagePicker
+            // Los errores del callback deben manejarse en el código que llama a seleccionarImagen
+            if (!result.canceled && result.assets[0]) {
+              const asset = result.assets[0];
+              await onImageSelected({
+                uri: asset.uri,
+                base64: asset.base64 || undefined,
+              });
+            }
+          },
+        },
+        {
+          text: 'Tomar foto',
+          onPress: async () => {
+            let result;
+            try {
+              result = await ImagePicker.launchCameraAsync({
+                allowsEditing,
+                aspect,
+                quality,
+                base64: true,
+              });
+            } catch (error) {
+              console.error('Error al tomar foto:', error);
+              Alert.alert('Error', 'No se pudo tomar la foto');
+              return;
+            }
+
+            // Ejecutar el callback fuera del try-catch de ImagePicker
+            // Los errores del callback deben manejarse en el código que llama a seleccionarImagen
+            if (!result.canceled && result.assets[0]) {
+              const asset = result.assets[0];
+              await onImageSelected({
+                uri: asset.uri,
+                base64: asset.base64 || undefined,
+              });
+            }
+          },
+        },
+    ],
+    { cancelable: true }
+  );
 }
 
