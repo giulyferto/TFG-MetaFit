@@ -7,17 +7,17 @@ import { ActivityIndicator, Alert, View } from 'react-native';
 
 export default function RegistroComidaPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [imagenUri, setImagenUri] = useState<string | null>(null);
 
   const handleRegistroManual = () => {
-    // Navegar a la pantalla de registro manual
     router.push('/registro-manual');
   };
 
   const handleCargarImagenComida = async () => {
     await seleccionarImagen(async (asset) => {
-      // Si tenemos base64 directamente, usarlo; si no, convertir desde URI
+      setImagenUri(asset.uri);
       if (asset.base64) {
-        await procesarImagenConBase64(asset.base64);
+        await procesarImagenConBase64(asset.base64, asset.uri);
       } else {
         await procesarImagen(asset.uri);
       }
@@ -94,12 +94,11 @@ export default function RegistroComidaPage() {
     }
   };
 
-  const procesarImagenConBase64 = async (imagenBase64: string) => {
+  const procesarImagenConBase64 = async (imagenBase64: string, uri?: string) => {
     setIsAnalyzing(true);
     try {
-      // Analizar la imagen con IA
       const resultado = await analizarImagenComida(imagenBase64);
-      
+
       if (!resultado.esPlatoComida) {
         Alert.alert(
           'Imagen no reconocida',
@@ -109,8 +108,7 @@ export default function RegistroComidaPage() {
         setIsAnalyzing(false);
         return;
       }
-      
-      // Si es un plato de comida, navegar a la pantalla de registro manual con los datos prellenados
+
       if (resultado.datosComida) {
         router.push({
           pathname: '/registro-manual',
@@ -122,7 +120,8 @@ export default function RegistroComidaPage() {
             proteina: resultado.datosComida.proteina || '',
             fibra: resultado.datosComida.fibra || '',
             grasa: resultado.datosComida.grasa || '',
-            desdeIA: 'true', // Flag para indicar que viene de IA
+            desdeIA: 'true',
+            imagenUri: uri || imagenUri || '',
           },
         });
       }

@@ -181,8 +181,8 @@ export function DetallesComidaCard({
 
 const styles = StyleSheet.create({
   comidaCard: {
-    backgroundColor: MetaFitColors.background.white,
-    borderRadius: 12,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
     padding: 16,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     borderColor: MetaFitColors.border.light,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: MetaFitColors.background.white,
+    backgroundColor: MetaFitColors.background.elevated,
   },
   eliminarIconText: {
     fontSize: 18,

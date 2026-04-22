@@ -1,12 +1,13 @@
 import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
-import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { obtenerConsumosPorFecha, type Consumo } from "@/utils/consumos";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export function FeedbackListScreen() {
   const [consumos, setConsumos] = useState<Consumo[]>([]);
@@ -27,7 +28,6 @@ export function FeedbackListScreen() {
     }
   }, [selectedDate]);
 
-  // Inicializar tempDate cuando se muestra el picker
   const handleOpenDatePicker = () => {
     setTempDate(selectedDate);
     setShowDatePicker(true);
@@ -46,7 +46,6 @@ export function FeedbackListScreen() {
         setSelectedDate(date);
       }
     } else {
-      // iOS - guardar temporalmente mientras el usuario selecciona
       if (date) {
         setTempDate(date);
       }
@@ -70,29 +69,59 @@ export function FeedbackListScreen() {
     return `${dia}/${mes}/${año}`;
   };
 
+  const isToday = (date: Date): boolean => {
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
+  };
+
   return (
-    <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
+    <SafeAreaView style={[styles.container, { backgroundColor: MetaFitColors.background.white }]} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Date Picker */}
-        <View style={styles.datePickerContainer}>
-          <ThemedText style={styles.dateLabel} lightColor={MetaFitColors.text.primary}>
-            Seleccionar fecha:
+        {/* Header */}
+        <View style={styles.pageHeader}>
+          <ThemedText style={styles.pageTitle} lightColor={MetaFitColors.text.primary}>
+            Historial
+          </ThemedText>
+          <ThemedText style={styles.pageSubtitle} lightColor={MetaFitColors.text.secondary}>
+            Revisa tus consumos por fecha
+          </ThemedText>
+        </View>
+
+        {/* Date selector */}
+        <View style={styles.dateSection}>
+          <ThemedText style={styles.dateLabel} lightColor={MetaFitColors.text.secondary}>
+            Fecha seleccionada
           </ThemedText>
           <TouchableOpacity
             style={styles.dateButton}
             onPress={handleOpenDatePicker}
+            activeOpacity={0.8}
           >
+            <IconSymbol
+              name="calendar"
+              size={18}
+              color={MetaFitColors.button.primary}
+            />
             <ThemedText style={styles.dateButtonText} lightColor={MetaFitColors.text.primary}>
-              {formatDate(selectedDate)}
+              {isToday(selectedDate) ? "Hoy" : formatDate(selectedDate)}
             </ThemedText>
+            <View style={styles.dateBadge}>
+              <ThemedText style={styles.dateBadgeText} lightColor={MetaFitColors.text.secondary}>
+                {formatDate(selectedDate)}
+              </ThemedText>
+            </View>
           </TouchableOpacity>
         </View>
 
-        {/* Date Picker Modal */}
+        {/* Date Picker */}
         {showDatePicker && (
           <>
             {Platform.OS === "ios" && (
@@ -103,18 +132,21 @@ export function FeedbackListScreen() {
                     style={styles.iosDatePickerButton}
                   >
                     <ThemedText
-                      style={styles.iosDatePickerButtonText}
-                      lightColor={MetaFitColors.button.primary}
+                      style={styles.iosDatePickerCancelText}
+                      lightColor={MetaFitColors.text.secondary}
                     >
                       Cancelar
                     </ThemedText>
                   </TouchableOpacity>
+                  <ThemedText style={styles.iosPickerTitle} lightColor={MetaFitColors.text.primary}>
+                    Seleccionar fecha
+                  </ThemedText>
                   <TouchableOpacity
                     onPress={handleAcceptDate}
                     style={styles.iosDatePickerButton}
                   >
                     <ThemedText
-                      style={styles.iosDatePickerButtonText}
+                      style={styles.iosDatePickerAcceptText}
                       lightColor={MetaFitColors.button.primary}
                     >
                       Aceptar
@@ -143,16 +175,25 @@ export function FeedbackListScreen() {
           </>
         )}
 
-        {/* Tabla de consumos */}
+        {/* Consumos section */}
         <View style={styles.consumosSection}>
-          <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.primary}>
-            Consumos del {formatDate(selectedDate)}
-          </ThemedText>
+          <View style={styles.sectionHeader}>
+            <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.primary}>
+              Consumos del {isToday(selectedDate) ? "día de hoy" : formatDate(selectedDate)}
+            </ThemedText>
+            {consumos.length > 0 && (
+              <View style={styles.countBadge}>
+                <ThemedText style={styles.countText} lightColor={MetaFitColors.text.secondary}>
+                  {consumos.length}
+                </ThemedText>
+              </View>
+            )}
+          </View>
 
           <TablaConsumos consumos={consumos} isLoading={isLoading} />
         </View>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
@@ -165,63 +206,120 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 100,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 110,
   },
-  datePickerContainer: {
-    marginTop: 100,
-    marginBottom: 20,
+  pageHeader: {
+    marginBottom: 28,
+  },
+  pageTitle: {
+    fontSize: 32,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    lineHeight: 40,
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 15,
+  },
+  dateSection: {
+    marginBottom: 24,
+    gap: 8,
   },
   dateLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 8,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
   },
   dateButton: {
-    backgroundColor: MetaFitColors.button.secondary,
-    paddingVertical: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: MetaFitColors.background.card,
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
   },
   dateButtonText: {
     fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+  },
+  dateBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: MetaFitColors.background.elevated,
+  },
+  dateBadgeText: {
+    fontSize: 12,
     fontWeight: "500",
   },
-  consumosSection: {
-    marginTop: 5,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
   iosDatePickerContainer: {
-    backgroundColor: MetaFitColors.background.white,
-    borderRadius: 12,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
-    marginTop: 10,
-    marginBottom: 10,
+    marginBottom: 16,
+    overflow: "hidden",
   },
   iosDatePickerHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: MetaFitColors.border.light,
   },
-  iosDatePickerButton: {
-    paddingVertical: 8,
-  },
-  iosDatePickerButtonText: {
-    fontSize: 16,
+  iosPickerTitle: {
+    fontSize: 15,
     fontWeight: "600",
+  },
+  iosDatePickerButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  iosDatePickerCancelText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  iosDatePickerAcceptText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
   iosDatePicker: {
     height: 200,
   },
+  consumosSection: {
+    flex: 1,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    flex: 1,
+    letterSpacing: -0.2,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
 });
-

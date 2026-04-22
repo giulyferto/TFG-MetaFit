@@ -1,37 +1,62 @@
-import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { HapticTab } from '@/components/ui/haptic-tab';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { MetaFitColors } from '@/constants/theme';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+function TabIcon({
+  icon,
+  iconActive,
+  focused,
+}: {
+  icon: IoniconName;
+  iconActive: IoniconName;
+  focused: boolean;
+}) {
+  return (
+    <View style={[styles.pill, focused && styles.pillActive]}>
+      <Ionicons
+        name={focused ? iconActive : icon}
+        size={22}
+        color={focused ? MetaFitColors.button.primary : MetaFitColors.text.tertiary}
+      />
+    </View>
+  );
+}
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: MetaFitColors.button.primary,
+        tabBarInactiveTintColor: MetaFitColors.text.tertiary,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarShowLabel: false,
         tabBarStyle: {
-          height: 90,
-          paddingBottom: 20,
-          paddingTop: 15,
+          height: 88,
+          paddingTop: 6,
+          paddingBottom: 0,
+          backgroundColor: MetaFitColors.background.beige,
+          borderTopWidth: 1,
+          borderTopColor: MetaFitColors.border.light,
+          shadowColor: MetaFitColors.text.primary,
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.08,
+          shadowRadius: 16,
+          elevation: 10,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'Inicio',
-          tabBarIcon: () => (
-            <Image
-              source={require('@/assets/images/Icon_Home.png')}
-              style={{ width: 35, height: 35 }}
-              contentFit="contain"
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="home-outline" iconActive="home" focused={focused} />
           ),
         }}
       />
@@ -39,12 +64,8 @@ export default function TabLayout() {
         name="feedback"
         options={{
           title: 'Feedback',
-          tabBarIcon: () => (
-            <Image
-              source={require('@/assets/images/Icon_Feedback.png')}
-              style={{ width: 42, height: 42 }}
-              contentFit="contain"
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="chatbubble-outline" iconActive="chatbubble" focused={focused} />
           ),
         }}
       />
@@ -52,12 +73,8 @@ export default function TabLayout() {
         name="configuracion"
         options={{
           title: 'Configuración',
-          tabBarIcon: () => (
-            <Image
-              source={require('@/assets/images/Icon_Settings.png')}
-              style={{ width: 60, height: 60 }}
-              contentFit="contain"
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="settings-outline" iconActive="settings" focused={focused} />
           ),
         }}
       />
@@ -65,15 +82,24 @@ export default function TabLayout() {
         name="perfil"
         options={{
           title: 'Perfil',
-          tabBarIcon: () => (
-            <Image
-              source={require('@/assets/images/Icon_Profile.png')}
-              style={{ width: 35, height: 35 }}
-              contentFit="contain"
-            />
+          tabBarIcon: ({ focused }) => (
+            <TabIcon icon="person-outline" iconActive="person" focused={focused} />
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  pill: {
+    width: 52,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+  },
+  pillActive: {
+    backgroundColor: MetaFitColors.background.elevated,
+  },
+});

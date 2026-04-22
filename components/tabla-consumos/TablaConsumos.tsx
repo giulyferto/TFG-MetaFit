@@ -1,6 +1,7 @@
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import type { Consumo } from "@/utils/consumos";
+import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
 
@@ -17,12 +18,10 @@ export function TablaConsumos({
 }: TablaConsumosProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  // Resetear a la primera página cuando cambian los consumos
   useEffect(() => {
     setCurrentPage(1);
   }, [consumos.length]);
 
-  // Calcular los consumos para la página actual
   const totalPages = Math.ceil(consumos.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -53,70 +52,103 @@ export function TablaConsumos({
     }
   };
 
+  const getCalificacionBg = (calificacion: Consumo["calificacion"]) => {
+    switch (calificacion) {
+      case "Alta":
+        return "rgba(74, 158, 107, 0.1)";
+      case "Media":
+        return "rgba(201, 148, 58, 0.1)";
+      case "Baja":
+        return "rgba(201, 72, 72, 0.1)";
+      default:
+        return MetaFitColors.background.elevated;
+    }
+  };
+
   const getCalificacionTexto = (calificacion: Consumo["calificacion"]) => {
     if (!calificacion) return "Sin calificar";
     return calificacion;
   };
 
+  if (isLoading) {
+    return (
+      <View style={styles.stateContainer}>
+        <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
+        <ThemedText style={styles.stateText} lightColor={MetaFitColors.text.secondary}>
+          Cargando consumos...
+        </ThemedText>
+      </View>
+    );
+  }
+
+  if (consumos.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <View style={styles.emptyIconWrapper}>
+          <ThemedText style={styles.emptyIcon}>🥗</ThemedText>
+        </View>
+        <ThemedText style={styles.emptyTitle} lightColor={MetaFitColors.text.primary}>
+          Sin registros aún
+        </ThemedText>
+        <ThemedText style={styles.emptySubtitle} lightColor={MetaFitColors.text.secondary}>
+          Registra tu primera comida para comenzar a rastrear tu nutrición
+        </ThemedText>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      {/* Tabla de consumos */}
-      <View style={styles.tableContainer}>
-        {/* Header de la tabla */}
-        <View style={styles.tableHeader}>
-          <ThemedText style={styles.headerText} lightColor={MetaFitColors.text.secondary}>
-            Calificación
-          </ThemedText>
-          <ThemedText style={styles.headerText} lightColor={MetaFitColors.text.secondary}>
-            Descripción
-          </ThemedText>
-        </View>
-
-        {/* Filas de datos */}
-        {isLoading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
-            <ThemedText
-              style={styles.loadingText}
-              lightColor={MetaFitColors.text.secondary}
-            >
-              Cargando consumos...
-            </ThemedText>
-          </View>
-        ) : consumos.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <ThemedText
-              style={styles.emptyText}
-              lightColor={MetaFitColors.text.secondary}
-            >
-              No hay consumos registrados aún
-            </ThemedText>
-          </View>
-        ) : (
-          consumosPaginaActual.map((consumo, index) => (
-            <View key={consumo.id}>
-              <View style={styles.tableRow}>
-                <ThemedText
-                  style={styles.calificacionText}
-                  lightColor={getCalificacionColor(consumo.calificacion)}
+      {/* Cards list */}
+      <View style={styles.cardsList}>
+        {consumosPaginaActual.map((consumo) => (
+          <View key={consumo.id} style={styles.consumoCard}>
+            <View style={styles.cardRow}>
+              {/* Left: badge + description */}
+              <View style={styles.cardContent}>
+                <View
+                  style={[
+                    styles.ratingBadge,
+                    { backgroundColor: getCalificacionBg(consumo.calificacion) },
+                  ]}
                 >
-                  {getCalificacionTexto(consumo.calificacion)}
-                </ThemedText>
+                  <View
+                    style={[
+                      styles.ratingDot,
+                      { backgroundColor: getCalificacionColor(consumo.calificacion) },
+                    ]}
+                  />
+                  <ThemedText
+                    style={styles.ratingText}
+                    lightColor={getCalificacionColor(consumo.calificacion)}
+                  >
+                    {getCalificacionTexto(consumo.calificacion)}
+                  </ThemedText>
+                </View>
                 <ThemedText
                   style={styles.descripcionText}
                   lightColor={MetaFitColors.text.primary}
+                  numberOfLines={2}
                 >
                   {consumo.descripcion}
                 </ThemedText>
               </View>
-              {index < consumosPaginaActual.length - 1 && <View style={styles.divider} />}
+
+              {/* Right: food image thumbnail */}
+              {consumo.imagenUrl && (
+                <Image
+                  source={{ uri: consumo.imagenUrl }}
+                  style={styles.thumbnail}
+                  contentFit="cover"
+                />
+              )}
             </View>
-          ))
-        )}
+          </View>
+        ))}
       </View>
 
-      {/* Controles de paginación */}
-      {!isLoading && consumos.length > itemsPerPage && (
+      {/* Pagination */}
+      {consumos.length > itemsPerPage && (
         <View style={styles.paginationContainer}>
           <TouchableOpacity
             style={[
@@ -125,30 +157,23 @@ export function TablaConsumos({
             ]}
             onPress={handlePreviousPage}
             disabled={currentPage === 1}
+            activeOpacity={0.7}
           >
             <ThemedText
-              style={[
-                styles.paginationButtonText,
-                currentPage === 1 && styles.paginationButtonTextDisabled,
-              ]}
+              style={styles.paginationButtonText}
               lightColor={
                 currentPage === 1
                   ? MetaFitColors.text.tertiary
                   : MetaFitColors.text.primary
               }
             >
-              Anterior
+              ← Anterior
             </ThemedText>
           </TouchableOpacity>
 
-          <View style={styles.paginationInfo}>
-            <ThemedText
-              style={styles.paginationText}
-              lightColor={MetaFitColors.text.secondary}
-            >
-              Página {currentPage} de {totalPages}
-            </ThemedText>
-          </View>
+          <ThemedText style={styles.paginationInfo} lightColor={MetaFitColors.text.tertiary}>
+            {currentPage} / {totalPages}
+          </ThemedText>
 
           <TouchableOpacity
             style={[
@@ -157,19 +182,17 @@ export function TablaConsumos({
             ]}
             onPress={handleNextPage}
             disabled={currentPage === totalPages}
+            activeOpacity={0.7}
           >
             <ThemedText
-              style={[
-                styles.paginationButtonText,
-                currentPage === totalPages && styles.paginationButtonTextDisabled,
-              ]}
+              style={styles.paginationButtonText}
               lightColor={
                 currentPage === totalPages
                   ? MetaFitColors.text.tertiary
                   : MetaFitColors.text.primary
               }
             >
-              Siguiente
+              Siguiente →
             </ThemedText>
           </TouchableOpacity>
         </View>
@@ -180,99 +203,123 @@ export function TablaConsumos({
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     width: "100%",
+    justifyContent: "space-between",
   },
-  tableContainer: {
-    backgroundColor: MetaFitColors.background.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    overflow: "hidden",
-  },
-  tableHeader: {
-    flexDirection: "row",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: MetaFitColors.border.divider,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.light,
-  },
-  headerText: {
-    fontSize: 14,
-    fontWeight: "600",
-    flex: 1,
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    alignItems: "center",
-  },
-  calificacionText: {
-    fontSize: 14,
-    fontWeight: "600",
-    width: 100,
-  },
-  descripcionText: {
-    fontSize: 14,
-    flex: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: MetaFitColors.border.divider,
-    marginLeft: 16,
-  },
-  loadingContainer: {
+  stateContainer: {
     paddingVertical: 40,
     alignItems: "center",
     justifyContent: "center",
+    gap: 12,
   },
-  loadingText: {
-    marginTop: 12,
+  stateText: {
     fontSize: 14,
   },
   emptyContainer: {
-    paddingVertical: 40,
+    paddingBottom: 36,
+    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
   },
-  emptyText: {
+  emptyIconWrapper: {
+    paddingTop: 36,
+    paddingBottom: 12,
+    alignItems: "center",
+  },
+  emptyIcon: {
+    fontSize: 44,
+    lineHeight: 54,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  emptySubtitle: {
     fontSize: 14,
     textAlign: "center",
+    lineHeight: 20,
+  },
+  cardsList: {
+    flex: 1,
+    gap: 10,
+  },
+  consumoCard: {
+    flex: 1,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  cardRow: {
+    flex: 1,
+    flexDirection: "row",
+    gap: 10,
+  },
+  cardContent: {
+    flex: 1,
+    gap: 8,
+  },
+  thumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 10,
+    alignSelf: "center",
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  ratingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  descripcionText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   paginationContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginTop: 16,
-    paddingHorizontal: 8,
+    paddingHorizontal: 4,
   },
   paginationButton: {
     paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: MetaFitColors.button.secondary,
-    minWidth: 80,
-    alignItems: "center",
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
   },
   paginationButtonDisabled: {
-    backgroundColor: MetaFitColors.border.divider,
-    opacity: 0.5,
+    opacity: 0.35,
   },
   paginationButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
-  paginationButtonTextDisabled: {
-    color: MetaFitColors.text.tertiary,
-  },
   paginationInfo: {
-    flex: 1,
-    alignItems: "center",
-  },
-  paginationText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "500",
   },
 });
-

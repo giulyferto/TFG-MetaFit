@@ -13,12 +13,14 @@ type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
   datosIniciales?: DatosComida;
+  imagenUri?: string;
   onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
   onCancelarPress?: () => void;
 };
 
 export function RegistroManualScreen({
   datosIniciales,
+  imagenUri,
   onAgregarAlDiarioPress,
   onCancelarPress,
 }: RegistroManualScreenProps) {
@@ -85,15 +87,12 @@ export function RegistroManualScreen({
       
       // Si hay una comida seleccionada del dropdown, usar su ID directamente
       if (comidaSeleccionadaId) {
-        // Usar el ID de la comida seleccionada sin guardarla nuevamente
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId, imagenUri);
       } else if (guardarComida) {
-        // Si el checkbox está marcado y no hay comida seleccionada, guardar como nueva plantilla
         const comidaId = await guardarComidaComoPlantilla(datosComida);
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId, imagenUri);
       } else {
-        // Si no está marcado y no hay comida seleccionada, solo guardar el registro sin plantilla
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado);
+        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, undefined, imagenUri);
       }
       
       // Si hay una función callback, llamarla con los datos de la comida, el tipo y el ID del registro
@@ -142,8 +141,8 @@ export function RegistroManualScreen({
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol
             name="chevron.left"
-            size={24}
-            color={MetaFitColors.text.primary}
+            size={20}
+            color={MetaFitColors.text.secondary}
           />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
@@ -274,27 +273,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.divider,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     flex: 1,
   },
   headerSpacer: {
-    width: 40,
+    width: 48,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
     paddingBottom: 100,
   },
   tipoComidaContainer: {
@@ -304,46 +306,58 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   tipoComidaButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 20,
-    backgroundColor: MetaFitColors.border.divider,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
     minWidth: 80,
     alignItems: "center",
   },
   tipoComidaButtonActive: {
-    backgroundColor: MetaFitColors.button.primary,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderColor: MetaFitColors.button.primary,
   },
   tipoComidaText: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 13,
+    fontWeight: "600",
+    color: MetaFitColors.text.secondary,
   },
   tipoComidaTextActive: {
-    color: MetaFitColors.text.white,
+    color: MetaFitColors.button.primary,
   },
   agregarButton: {
     backgroundColor: MetaFitColors.button.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
     marginBottom: 12,
+    shadowColor: "#2C3E50",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   agregarButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   agregarButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.2,
     color: MetaFitColors.text.white,
   },
   cancelarButton: {
-    backgroundColor: MetaFitColors.button.secondary,
+    backgroundColor: MetaFitColors.background.card,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
   },
   cancelarButtonText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
   },
   checkboxContainer: {
@@ -361,7 +375,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: MetaFitColors.background.white,
+    backgroundColor: MetaFitColors.background.card,
   },
   checkboxChecked: {
     width: "100%",
@@ -372,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   checkboxLabel: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
 });

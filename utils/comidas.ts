@@ -1,6 +1,7 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { auth, db } from "@/firebase";
-import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { addDoc, collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { subirImagenComida } from "./storage";
 
 export type ComidaAnterior = {
   id: string;
@@ -117,7 +118,8 @@ export async function guardarComidaComoPlantilla(
 export async function guardarComidaEnDiario(
   datosComida: DatosComida,
   tipoComida: string,
-  comidaId?: string
+  comidaId?: string,
+  imagenUri?: string
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
@@ -139,12 +141,21 @@ export async function guardarComidaEnDiario(
       fechaCreacion: new Date().toISOString(),
     };
 
-    // Si hay un ID de comida plantilla, agregarlo como referencia
     if (comidaId) {
       datosParaGuardar.comidaId = comidaId;
     }
 
     const docRef = await addDoc(registrosRef, datosParaGuardar);
+
+    if (imagenUri) {
+      try {
+        const imagenUrl = await subirImagenComida(imagenUri, docRef.id);
+        await updateDoc(doc(db, "registrosComidas", docRef.id), { imagenUrl });
+      } catch (uploadError) {
+        console.error("Error al subir imagen (registro guardado sin imagen):", uploadError);
+      }
+    }
+
     return docRef.id;
   } catch (error) {
     console.error("Error al guardar registro de comida:", error);

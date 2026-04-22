@@ -29,17 +29,14 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Validar formato de email
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
   const handleLoginPress = async () => {
-    // Limpiar errores previos
     setError("");
 
-    // Validaciones
     if (!email.trim()) {
       setError("Por favor ingresa tu email");
       return;
@@ -58,7 +55,6 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
     setIsLoading(true);
 
     try {
-      // Autenticar usuario con Firebase
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email.trim(),
@@ -67,15 +63,11 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
 
       console.log("Usuario autenticado exitosamente:", userCredential.user.email);
 
-      // Verificar si tiene perfil nutricional completo
       const hasProfile = await hasCompleteNutritionalProfile();
 
-      // Si hay un callback personalizado, usarlo
       if (onLoginPress) {
         onLoginPress();
       } else {
-        // Si no tiene perfil completo, redirigir al formulario
-        // Si tiene perfil completo, redirigir a home
         if (!hasProfile) {
           router.replace("/info-nutricional");
         } else {
@@ -84,10 +76,9 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
       }
     } catch (error: any) {
       console.error("Error al iniciar sesión:", error);
-      
-      // Manejar errores específicos de Firebase
+
       let errorMessage = "Error al iniciar sesión. Por favor intenta de nuevo.";
-      
+
       switch (error.code) {
         case "auth/user-not-found":
           errorMessage = "No existe una cuenta con este email.";
@@ -110,7 +101,7 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
         default:
           errorMessage = error.message || errorMessage;
       }
-      
+
       setError(errorMessage);
       Alert.alert("Error de inicio de sesión", errorMessage);
     } finally {
@@ -122,13 +113,11 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
     if (onRegisterPress) {
       onRegisterPress();
     } else {
-      // Navegar a la pantalla de registro
       router.push("/register");
     }
   };
 
   const handleSocialLogin = () => {
-    // Aquí irá la lógica de login con Google cuando se integre Firebase
     console.log("Log in con Google");
     router.replace("/bienvenida");
   };
@@ -140,12 +129,12 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol
             name="chevron.left"
-            size={24}
-            color={MetaFitColors.text.primary}
+            size={20}
+            color={MetaFitColors.text.secondary}
           />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
-          Log In
+          Iniciar sesión
         </ThemedText>
         <View style={styles.headerSpacer} />
       </View>
@@ -155,25 +144,43 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Input Fields */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor={MetaFitColors.text.tertiary}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
+        {/* Welcome text */}
+        <View style={styles.welcomeSection}>
+          <ThemedText style={styles.welcomeTitle} lightColor={MetaFitColors.text.primary}>
+            Bienvenido de vuelta
+          </ThemedText>
+          <ThemedText style={styles.welcomeSubtitle} lightColor={MetaFitColors.text.secondary}>
+            Ingresa tus credenciales para continuar
+          </ThemedText>
         </View>
 
-        <View style={styles.inputContainer}>
-          <View style={styles.passwordInputWrapper}>
+        {/* Input Fields */}
+        <View style={styles.inputGroup}>
+          <ThemedText style={styles.inputLabel} lightColor={MetaFitColors.text.secondary}>
+            Email
+          </ThemedText>
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="tu@email.com"
+              placeholderTextColor={MetaFitColors.text.tertiary}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <ThemedText style={styles.inputLabel} lightColor={MetaFitColors.text.secondary}>
+            Contraseña
+          </ThemedText>
+          <View style={[styles.inputWrapper, styles.passwordWrapper]}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Contraseña"
+              placeholder="••••••••"
               placeholderTextColor={MetaFitColors.text.tertiary}
               value={password}
               onChangeText={setPassword}
@@ -187,8 +194,8 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
             >
               <IconSymbol
                 name={showPassword ? "eye.slash" : "eye"}
-                size={20}
-                color={MetaFitColors.text.secondary}
+                size={18}
+                color={MetaFitColors.text.tertiary}
               />
             </TouchableOpacity>
           </View>
@@ -197,6 +204,7 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
         {/* Error Message */}
         {error ? (
           <View style={styles.errorContainer}>
+            <IconSymbol name="exclamationmark.circle" size={14} color={MetaFitColors.error} />
             <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>
               {error}
             </ThemedText>
@@ -208,45 +216,44 @@ export function LoginScreen({ onLoginPress, onRegisterPress }: LoginScreenProps)
           style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
           onPress={handleLoginPress}
           disabled={isLoading}
+          activeOpacity={0.85}
         >
           <ThemedText style={styles.loginButtonText} lightColor={MetaFitColors.text.white}>
-            {isLoading ? "Iniciando sesión..." : "Log In"}
+            {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
           </ThemedText>
         </TouchableOpacity>
 
         {/* Separator */}
         <View style={styles.separatorContainer}>
           <View style={styles.separatorLine} />
-          <ThemedText style={styles.separatorText} lightColor={MetaFitColors.text.secondary}>
-            O
+          <ThemedText style={styles.separatorText} lightColor={MetaFitColors.text.tertiary}>
+            o continúa con
           </ThemedText>
           <View style={styles.separatorLine} />
         </View>
 
-        <ThemedText style={styles.socialTitle} lightColor={MetaFitColors.text.secondary}>
-          Log in with
-        </ThemedText>
-
-        {/* Social Media Icons */}
-        <View style={styles.socialContainer}>
-          <TouchableOpacity
-            style={styles.socialButton}
-            onPress={handleSocialLogin}
-          >
-            <Image
-              source={require("@/assets/images/google-icon.png")}
-              style={styles.googleIcon}
-              contentFit="contain"
-            />
-          </TouchableOpacity>
-        </View>
+        {/* Social Login */}
+        <TouchableOpacity
+          style={styles.socialButton}
+          onPress={handleSocialLogin}
+          activeOpacity={0.8}
+        >
+          <Image
+            source={require("@/assets/images/google-icon.png")}
+            style={styles.googleIcon}
+            contentFit="contain"
+          />
+          <ThemedText style={styles.socialButtonText} lightColor={MetaFitColors.text.secondary}>
+            Google
+          </ThemedText>
+        </TouchableOpacity>
 
         {/* Register Link */}
         <View style={styles.registerContainer}>
           <ThemedText style={styles.registerQuestion} lightColor={MetaFitColors.text.secondary}>
             ¿No tienes cuenta?{" "}
           </ThemedText>
-          <TouchableOpacity onPress={handleRegisterPress}>
+          <TouchableOpacity onPress={handleRegisterPress} activeOpacity={0.7}>
             <ThemedText style={styles.registerLink} lightColor={MetaFitColors.button.primary}>
               Registrarme
             </ThemedText>
@@ -267,147 +274,163 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.divider,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     flex: 1,
   },
   headerSpacer: {
-    width: 40,
+    width: 48,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 24,
+    paddingBottom: 48,
   },
-  inputContainer: {
+  welcomeSection: {
+    marginTop: 12,
+    marginBottom: 36,
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    lineHeight: 36,
+    marginBottom: 6,
+  },
+  welcomeSubtitle: {
+    fontSize: 15,
+  },
+  inputGroup: {
     marginBottom: 20,
   },
-  input: {
-    height: 50,
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.4,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  inputWrapper: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
-    borderRadius: 12,
+  },
+  input: {
+    height: 52,
     paddingHorizontal: 16,
     fontSize: 16,
-    backgroundColor: MetaFitColors.background.white,
     color: MetaFitColors.text.primary,
   },
-  passwordInputWrapper: {
+  passwordWrapper: {
     flexDirection: "row",
     alignItems: "center",
-    height: 50,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    borderRadius: 12,
-    backgroundColor: MetaFitColors.background.white,
-    paddingRight: 16,
+    paddingRight: 4,
   },
   passwordInput: {
     flex: 1,
-    height: 50,
+    height: 52,
     paddingHorizontal: 16,
     fontSize: 16,
     color: MetaFitColors.text.primary,
   },
   eyeIcon: {
-    padding: 4,
+    padding: 12,
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 16,
+    padding: 12,
+    backgroundColor: "rgba(252, 129, 129, 0.1)",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "rgba(252, 129, 129, 0.25)",
+  },
+  errorText: {
+    fontSize: 13,
+    flex: 1,
   },
   loginButton: {
     backgroundColor: MetaFitColors.button.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
-    marginTop: 10,
-    marginBottom: 30,
+    marginTop: 8,
+    marginBottom: 28,
+    shadowColor: "#2C3E50",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   loginButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   loginButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: MetaFitColors.text.white,
-  },
-  errorContainer: {
-    marginTop: 10,
-    marginBottom: 10,
-    padding: 12,
-    backgroundColor: "#FEE2E2",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: MetaFitColors.error,
-  },
-  errorText: {
-    fontSize: 14,
-    color: MetaFitColors.error,
-    textAlign: "center",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   separatorContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 30,
+    marginBottom: 20,
+    gap: 12,
   },
   separatorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: MetaFitColors.border.divider,
+    backgroundColor: MetaFitColors.border.light,
   },
   separatorText: {
-    marginHorizontal: 16,
-    fontSize: 14,
-    color: MetaFitColors.text.secondary,
-  },
-  socialTitle: {
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 20,
-    color: MetaFitColors.text.secondary,
-  },
-  socialContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 20,
-    marginBottom: 40,
+    fontSize: 13,
   },
   socialButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: MetaFitColors.background.white,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingVertical: 15,
+    borderRadius: 14,
+    backgroundColor: MetaFitColors.background.card,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
-    justifyContent: "center",
-    alignItems: "center",
+    marginBottom: 36,
   },
   googleIcon: {
-    width: 24,
-    height: 24,
+    width: 20,
+    height: 20,
+  },
+  socialButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
   },
   registerContainer: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 20,
   },
   registerQuestion: {
-    fontSize: 14,
-    color: MetaFitColors.text.secondary,
+    fontSize: 15,
   },
   registerLink: {
-    fontSize: 14,
-    fontWeight: "600",
-    textDecorationLine: "underline",
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

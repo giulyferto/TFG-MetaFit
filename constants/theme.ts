@@ -1,78 +1,83 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * MetaFit Design System — Logo Palette (Warm & Light)
+ * Inspired directly by the MetaFit logo: steel blue ring, warm cream fill, sand accent.
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = '#5B96B0';
+const tintColorDark = '#5B96B0';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: '#2C3E50',
+    background: '#F2EDE4',
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: '#7A9AAA',
+    tabIconDefault: '#7A9AAA',
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: '#2C3E50',
+    background: '#F2EDE4',
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: '#7A9AAA',
+    tabIconDefault: '#7A9AAA',
     tabIconSelected: tintColorDark,
   },
 };
 
-// Colores de la aplicación MetaFit
+// Colores de la aplicación MetaFit — Paleta del logo (crema cálida + azul acero)
 export const MetaFitColors = {
   // Colores de texto
   text: {
-    primary: '#333333',
-    secondary: '#666666',
-    tertiary: '#999999',
-    white: '#FFFFFF',
+    primary: '#2C3E50',      // Azul-charcoal profundo
+    secondary: '#6B7C8D',    // Gris-azulado medio
+    tertiary: '#A8B8C4',     // Gris-azulado claro
+    white: '#FFFFFF',        // Blanco puro
+    onAccent: '#FFFFFF',     // Texto sobre botones
   },
   // Colores de fondo
   background: {
-    white: '#FFFFFF',
-    beige: '#f1f0e8',
+    white: '#F2EDE4',        // Crema cálida (relleno interior del logo)
+    beige: '#EAE4DA',        // Crema más profunda (tab bar, dividers)
     transparent: 'transparent',
+    card: '#FFFFFF',         // Cards blancas sobre fondo crema
+    elevated: '#EEF5F9',     // Azul muy claro (círculo azul del logo)
   },
   // Colores de bordes
   border: {
-    light: '#E0E0E0',
-    divider: '#F0F0F0',
-    beige: '#f1f0e8',
+    light: '#DDD6CC',        // Borde gris-cálido
+    divider: '#EDE8E0',      // Divisor muy sutil
+    beige: '#EAE4DA',
+    accent: '#B8CDD6',       // Borde con tinte azul-acero
   },
   // Colores de estado
-  error: '#FF0000',
+  error: '#E05252',
   // Colores de botones
   button: {
-    primary: '#96b6c5',
-    secondary: '#cce6f1',
-    active: '#f1f0e8',
+    primary: '#5B96B0',      // Azul acero del logo (ligeramente intensificado)
+    secondary: '#EEF5F9',    // Azul muy claro para botones secundarios
+    active: '#EAE4DA',
   },
   // Colores de calificación
   calificacion: {
-    alta: '#4CAF50', // Verde
-    media: '#FFC107', // Amarillo
-    baja: '#F44336', // Rojo
+    alta: '#4A9E6B',         // Verde muted
+    media: '#C9943A',        // Ámbar dorado (cálido como el acento arena del logo)
+    baja: '#C94848',         // Rojo muted
+  },
+  // Color de acento arena del logo
+  accent: {
+    sand: '#C9A882',         // Acento arena/melocotón del logo
+    sandLight: '#F0E6D8',    // Versión muy clara
   },
 };
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {

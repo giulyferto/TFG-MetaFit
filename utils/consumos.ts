@@ -8,6 +8,7 @@ export type Consumo = {
   fechaCreacion: string;
   tipoComida?: string;
   nombre?: string;
+  imagenUrl?: string;
 };
 
 /**
@@ -80,6 +81,7 @@ export async function obtenerUltimosConsumos(limite: number = 10): Promise<Consu
         fechaCreacion: data.fechaCreacion || new Date().toISOString(),
         tipoComida: tipoComida,
         nombre: nombre,
+        imagenUrl: data.imagenUrl || undefined,
       });
     });
 
@@ -177,6 +179,7 @@ export async function obtenerConsumosPorFecha(fecha: Date): Promise<Consumo[]> {
         fechaCreacion: data.fechaCreacion || new Date().toISOString(),
         tipoComida: tipoComida,
         nombre: nombre,
+        imagenUrl: data.imagenUrl || undefined,
       });
     });
 

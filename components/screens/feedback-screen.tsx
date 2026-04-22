@@ -43,7 +43,6 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
       } catch (err: any) {
         console.error("Error al cargar feedback:", err);
         setError(err.message || "Error al generar el feedback");
-        // Usar un feedback por defecto en caso de error
         setFeedbackText(
           "No se pudo generar el feedback en este momento. Por favor, verifica tu conexión a internet e intenta nuevamente."
         );
@@ -58,7 +57,6 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
 
   const handleGuardar = async () => {
     try {
-      // Validar que tengamos los datos necesarios
       if (!registroComidaId) {
         Alert.alert("Error", "No se encontró el registro de comida asociado");
         return;
@@ -69,24 +67,35 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
         return;
       }
 
-      // Guardar el feedback en Firebase
       await guardarFeedback({
         texto: feedbackText,
         calificacion: calificacion,
         registroComidaId: registroComidaId,
       });
 
-      // Si hay un callback personalizado, llamarlo
       if (onGuardarPress) {
         onGuardarPress();
       } else {
-        // Navegar directamente a la pantalla principal después de guardar
         router.replace('/(tabs)');
       }
     } catch (error: any) {
       console.error("Error al guardar feedback:", error);
       Alert.alert("Error", `No se pudo guardar el feedback: ${error.message || "Error desconocido"}`);
     }
+  };
+
+  const getCalificacionColor = () => {
+    if (!calificacion) return MetaFitColors.text.tertiary;
+    if (calificacion === "Alta") return MetaFitColors.calificacion.alta;
+    if (calificacion === "Media") return MetaFitColors.calificacion.media;
+    return MetaFitColors.calificacion.baja;
+  };
+
+  const getCalificacionBg = () => {
+    if (!calificacion) return MetaFitColors.background.card;
+    if (calificacion === "Alta") return "rgba(74, 158, 107, 0.1)";
+    if (calificacion === "Media") return "rgba(201, 148, 58, 0.1)";
+    return "rgba(201, 72, 72, 0.1)";
   };
 
   return (
@@ -96,57 +105,59 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol
             name="chevron.left"
-            size={24}
-            color={MetaFitColors.text.primary}
+            size={20}
+            color={MetaFitColors.text.secondary}
           />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
-          Feedback
+          Análisis nutricional
         </ThemedText>
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={true}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Calificación - Solo mostrar cuando esté disponible */}
+        {/* Rating badge */}
         {calificacion && (
-          <View style={styles.calificacionContainer}>
-            <ThemedText style={styles.calificacionLabel} lightColor={MetaFitColors.text.primary}>
-              Calificación:{" "}
-            </ThemedText>
-            <ThemedText
-              style={styles.calificacionValue}
-              lightColor={
-                calificacion === "Alta"
-                  ? MetaFitColors.calificacion.alta
-                  : calificacion === "Media"
-                  ? MetaFitColors.calificacion.media
-                  : calificacion === "Baja"
-                  ? MetaFitColors.calificacion.baja
-                  : MetaFitColors.text.secondary
-              }
+          <View style={styles.ratingSection}>
+            <View
+              style={[
+                styles.ratingBadge,
+                { backgroundColor: getCalificacionBg() },
+              ]}
             >
-              {calificacion}
-            </ThemedText>
+              <View style={[styles.ratingDot, { backgroundColor: getCalificacionColor() }]} />
+              <ThemedText style={styles.ratingLabel} lightColor={MetaFitColors.text.secondary}>
+                Calificación:
+              </ThemedText>
+              <ThemedText
+                style={styles.ratingValue}
+                lightColor={getCalificacionColor()}
+              >
+                {calificacion}
+              </ThemedText>
+            </View>
           </View>
         )}
 
-        {/* Ilustración del plato */}
-        <View style={styles.platoContainer}>
-          <View style={styles.plato}>
-            <Image
-              source={FeedbackFoodImage}
-              style={styles.platoImage}
-              resizeMode="contain"
-            />
+        {/* Food image */}
+        <View style={styles.imageSection}>
+          <View style={styles.imageGlowRing}>
+            <View style={styles.imageContainer}>
+              <Image
+                source={FeedbackFoodImage}
+                style={styles.foodImage}
+                contentFit="contain"
+              />
+            </View>
           </View>
         </View>
 
-        {/* Texto de feedback */}
-        <View style={styles.feedbackContainer}>
+        {/* Feedback content */}
+        <View style={styles.feedbackCard}>
           {isLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={MetaFitColors.button.primary} />
@@ -154,12 +165,12 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
                 style={styles.loadingText}
                 lightColor={MetaFitColors.text.secondary}
               >
-                Generando feedback nutricional...
+                Analizando tu comida con IA...
               </ThemedText>
             </View>
           ) : error ? (
             <View style={styles.errorContainer}>
-              <ThemedText style={styles.errorText} lightColor={MetaFitColors.text.secondary}>
+              <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>
                 {error}
               </ThemedText>
             </View>
@@ -170,12 +181,18 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
           )}
         </View>
 
-        {/* Botón Guardar Feedback */}
-        <TouchableOpacity style={styles.guardarButton} onPress={handleGuardar}>
-          <ThemedText style={styles.guardarButtonText} lightColor={MetaFitColors.text.white}>
-            Guardar Feedback
-          </ThemedText>
-        </TouchableOpacity>
+        {/* Save button */}
+        {!isLoading && (
+          <TouchableOpacity
+            style={styles.guardarButton}
+            onPress={handleGuardar}
+            activeOpacity={0.85}
+          >
+            <ThemedText style={styles.guardarButtonText} lightColor={MetaFitColors.text.white}>
+              Guardar análisis
+            </ThemedText>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </ThemedView>
   );
@@ -191,85 +208,103 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.divider,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     flex: 1,
   },
   headerSpacer: {
-    width: 40,
+    width: 48,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingBottom: 48,
   },
-  calificacionContainer: {
+  ratingSection: {
+    marginBottom: 20,
+  },
+  ratingBadge: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 24,
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 24,
   },
-  calificacionLabel: {
-    fontSize: 16,
-    fontWeight: "400",
+  ratingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  calificacionValue: {
-    fontSize: 16,
-    fontWeight: "600",
+  ratingLabel: {
+    fontSize: 14,
+    fontWeight: "500",
   },
-  platoContainer: {
+  ratingValue: {
+    fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
+  imageSection: {
     alignItems: "center",
     marginBottom: 24,
   },
-  plato: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: MetaFitColors.background.beige,
+  imageGlowRing: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: "center",
     justifyContent: "center",
-    alignItems: "center",
     borderWidth: 2,
-    borderColor: MetaFitColors.border.light,
-    overflow: "hidden",
+    borderColor: MetaFitColors.border.accent,
+    shadowColor: MetaFitColors.button.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 2,
   },
-  platoImage: {
+  imageContainer: {
+    width: 148,
+    height: 148,
+    borderRadius: 74,
+    overflow: "hidden",
+    backgroundColor: MetaFitColors.background.card,
+  },
+  foodImage: {
     width: "100%",
     height: "100%",
   },
-  feedbackContainer: {
-    backgroundColor: MetaFitColors.background.white,
-    borderRadius: 12,
-    padding: 16,
+  feedbackCard: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 24,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
-  },
-  feedbackText: {
-    fontSize: 14,
-    fontWeight: "400",
-    lineHeight: 22,
-    color: MetaFitColors.text.primary,
-  },
-  feedbackBold: {
-    fontWeight: "600",
   },
   loadingContainer: {
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 40,
+    gap: 16,
   },
   loadingText: {
-    marginTop: 16,
     fontSize: 14,
     textAlign: "center",
   },
@@ -283,21 +318,25 @@ const styles = StyleSheet.create({
   },
   guardarButton: {
     backgroundColor: MetaFitColors.button.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: "center",
+    shadowColor: "#2C3E50",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   guardarButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
 });
 
-// Estilos para Markdown
 const markdownStyles = StyleSheet.create({
   body: {
     fontSize: 14,
-    fontWeight: "400",
     lineHeight: 22,
     color: MetaFitColors.text.primary,
   },
@@ -309,21 +348,21 @@ const markdownStyles = StyleSheet.create({
     marginBottom: 8,
   },
   heading2: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
     color: MetaFitColors.text.primary,
     marginTop: 14,
     marginBottom: 6,
   },
   heading3: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
-    color: MetaFitColors.text.primary,
+    color: MetaFitColors.button.primary,
     marginTop: 12,
     marginBottom: 6,
   },
   heading4: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
     color: MetaFitColors.text.primary,
     marginTop: 10,
@@ -332,23 +371,24 @@ const markdownStyles = StyleSheet.create({
   heading5: {
     fontSize: 14,
     fontWeight: "600",
-    color: MetaFitColors.text.primary,
+    color: MetaFitColors.text.secondary,
     marginTop: 8,
     marginBottom: 4,
   },
   heading6: {
     fontSize: 14,
     fontWeight: "600",
-    color: MetaFitColors.text.primary,
+    color: MetaFitColors.text.secondary,
     marginTop: 6,
     marginBottom: 4,
   },
   strong: {
-    fontWeight: "600",
+    fontWeight: "700",
     color: MetaFitColors.text.primary,
   },
   em: {
     fontStyle: "italic",
+    color: MetaFitColors.text.secondary,
   },
   text: {
     fontSize: 14,
@@ -364,11 +404,17 @@ const markdownStyles = StyleSheet.create({
     marginBottom: 8,
   },
   list_item: {
-    marginBottom: 4,
+    marginBottom: 6,
   },
   paragraph: {
     marginTop: 8,
     marginBottom: 8,
   },
+  code_inline: {
+    backgroundColor: MetaFitColors.background.elevated,
+    color: MetaFitColors.button.primary,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+    fontSize: 13,
+  },
 });
-

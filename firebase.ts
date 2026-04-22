@@ -4,6 +4,7 @@ import { FirebaseApp, getApps, initializeApp } from "firebase/app";
 import { Auth, getAuth } from "firebase/auth";
 import { Firestore, getFirestore } from "firebase/firestore";
 import { Functions, getFunctions } from "firebase/functions";
+import { FirebaseStorage, getStorage } from "firebase/storage";
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -30,6 +31,7 @@ if (getApps().length === 0) {
 export const auth: Auth = getAuth(app);
 export const db: Firestore = getFirestore(app);
 export const functions: Functions = getFunctions(app);
+export const storage: FirebaseStorage = getStorage(app);
 
 // Initialize Analytics (only for web platform)
 // Analytics is not available in React Native, so we check if it's supported

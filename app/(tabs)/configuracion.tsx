@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: MetaFitColors.background.white,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
   },
   header: {
     marginBottom: 20,
@@ -210,21 +210,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 6,
     paddingTop: 10,
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontWeight: '800',
+    letterSpacing: -0.5,
     paddingTop: 10,
     flex: 1,
   },
   editButton: {
-    padding: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 12,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     marginTop: 4,
   },
 });

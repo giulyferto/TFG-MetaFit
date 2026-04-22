@@ -178,8 +178,8 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     marginTop: 8,
-    backgroundColor: MetaFitColors.background.white,
-    borderRadius: 12,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
     maxHeight: 300,
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   comidaItemSelected: {
-    backgroundColor: MetaFitColors.border.divider,
+    backgroundColor: MetaFitColors.background.elevated,
   },
   checkbox: {
     width: 24,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     marginRight: 12,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: MetaFitColors.background.white,
+    backgroundColor: MetaFitColors.background.elevated,
   },
   checkboxChecked: {
     width: "100%",

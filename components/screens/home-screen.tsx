@@ -6,20 +6,21 @@ import { obtenerUltimosConsumos, type Consumo } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HomeScreenProps = {
   onCargarComidaPress?: () => void;
 };
 
 export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
+  const insets = useSafeAreaInsets();
   const [todosLosConsumos, setTodosLosConsumos] = useState<Consumo[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const cargarConsumos = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Obtener todos los consumos (sin límite)
       const consumos = await obtenerUltimosConsumos(1000);
       setTodosLosConsumos(consumos);
     } catch (error) {
@@ -29,12 +30,10 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
     }
   }, []);
 
-  // Cargar consumos cuando el componente se monta
   useEffect(() => {
     cargarConsumos();
   }, [cargarConsumos]);
 
-  // Recargar consumos cuando la pantalla recibe foco (cuando el usuario vuelve a esta pantalla)
   useFocusEffect(
     useCallback(() => {
       cargarConsumos();
@@ -45,43 +44,97 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
     if (onCargarComidaPress) {
       onCargarComidaPress();
     } else {
-      // Navegar a la pantalla de registro de comida
       router.push("/registro-comida");
     }
   };
 
+  const totalConsumos = todosLosConsumos.length;
+  const consumosAlta = todosLosConsumos.filter(c => c.calificacion === "Alta").length;
+
   return (
-    <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo y nombre */}
-        <View style={styles.logoContainer}>
+    <ThemedView style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 59 : 24) + 16 }]} lightColor={MetaFitColors.background.white}>
+      {/* Fixed top: header + stats + button */}
+      <View style={styles.topSection}>
+        <View style={styles.headerSection}>
           <Image
             source={require("@/assets/images/MetaFitLogo.png")}
             style={styles.logo}
             contentFit="contain"
           />
+          <View>
+            <ThemedText style={styles.greeting} lightColor={MetaFitColors.text.secondary}>
+              Bienvenido a
+            </ThemedText>
+            <ThemedText style={styles.appTitle} lightColor={MetaFitColors.text.primary}>
+              MetaFit
+            </ThemedText>
+          </View>
         </View>
 
-        {/* Botón Cargar comida */}
-        <TouchableOpacity style={styles.cargarComidaButton} onPress={handleCargarComidaPress}>
-          <ThemedText style={styles.cargarComidaButtonText} lightColor={MetaFitColors.text.white}>
-            Cargar comida
-          </ThemedText>
+        {!isLoading && totalConsumos > 0 && (
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <ThemedText style={styles.statValue} lightColor={MetaFitColors.button.primary}>
+                {totalConsumos}
+              </ThemedText>
+              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
+                Registros
+              </ThemedText>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <ThemedText style={styles.statValue} lightColor={MetaFitColors.calificacion.alta}>
+                {consumosAlta}
+              </ThemedText>
+              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
+                Calificación Alta
+              </ThemedText>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statCard}>
+              <ThemedText style={styles.statValue} lightColor={MetaFitColors.calificacion.media}>
+                {totalConsumos > 0 ? Math.round((consumosAlta / totalConsumos) * 100) : 0}%
+              </ThemedText>
+              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
+                Puntuación
+              </ThemedText>
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.cargarComidaButton}
+          onPress={handleCargarComidaPress}
+          activeOpacity={0.85}
+        >
+          <View style={styles.buttonContent}>
+            <View style={styles.buttonIconCircle}>
+              <ThemedText style={styles.buttonIcon}>+</ThemedText>
+            </View>
+            <ThemedText style={styles.cargarComidaButtonText} lightColor={MetaFitColors.text.white}>
+              Registrar comida
+            </ThemedText>
+          </View>
         </TouchableOpacity>
+      </View>
 
-        {/* Sección Últimos consumos */}
-        <View style={styles.consumosSection}>
+      {/* Consumos section: takes remaining space, pagination always visible */}
+      <View style={styles.consumosSection}>
+        <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.primary}>
-            Últimos consumos registrados
+            Últimos consumos
           </ThemedText>
-
-          <TablaConsumos consumos={todosLosConsumos} isLoading={isLoading} />
+          {totalConsumos > 0 && (
+            <View style={styles.countBadge}>
+              <ThemedText style={styles.countBadgeText} lightColor={MetaFitColors.text.secondary}>
+                {totalConsumos}
+              </ThemedText>
+            </View>
+          )}
         </View>
-      </ScrollView>
+
+        <TablaConsumos consumos={todosLosConsumos} isLoading={isLoading} itemsPerPage={3} />
+      </View>
     </ThemedView>
   );
 }
@@ -90,49 +143,123 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: MetaFitColors.background.white,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
-  scrollView: {
-    flex: 1,
+  topSection: {
+    gap: 0,
   },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  logoContainer: {
+  headerSection: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 80,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 150,
-    height: 150,
+    gap: 16,
+    marginTop: 4,
     marginBottom: 16,
   },
-  appName: {
-    fontSize: 28,
-    fontWeight: "600",
-    letterSpacing: 0.5,
+  logo: {
+    width: 52,
+    height: 52,
+  },
+  greeting: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+  },
+  appTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+    lineHeight: 30,
+  },
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: "center",
+    gap: 3,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: MetaFitColors.border.light,
+    marginVertical: 4,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.5,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    textAlign: "center",
   },
   cargarComidaButton: {
     backgroundColor: MetaFitColors.button.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 15,
+    borderRadius: 14,
+    marginBottom: 20,
+    shadowColor: "#2C3E50",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  buttonContent: {
+    flexDirection: "row",
     alignItems: "center",
-    marginBottom: 30,
+    justifyContent: "center",
+    gap: 12,
+  },
+  buttonIconCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonIcon: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#FFFFFF",
+    lineHeight: 22,
   },
   cargarComidaButtonText: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: MetaFitColors.text.white,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   consumosSection: {
-    marginTop: 5,
+    flex: 1,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.3,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  countBadgeText: {
+    fontSize: 12,
     fontWeight: "600",
-    marginBottom: 16,
   },
 });
-

@@ -11,6 +11,14 @@ type RegistroComidaScreenProps = {
   onCargarImagenEtiquetaPress?: () => void;
 };
 
+type MenuOption = {
+  title: string;
+  description: string;
+  icon: string;
+  accentColor: string;
+  onPress: () => void;
+};
+
 export function RegistroComidaScreen({
   onRegistroManualPress,
   onCargarImagenComidaPress,
@@ -20,7 +28,6 @@ export function RegistroComidaScreen({
     if (onRegistroManualPress) {
       onRegistroManualPress();
     } else {
-      // Navegar a la pantalla de registro manual (cuando se cree)
       console.log("Registro manual");
     }
   };
@@ -29,7 +36,6 @@ export function RegistroComidaScreen({
     if (onCargarImagenComidaPress) {
       onCargarImagenComidaPress();
     } else {
-      // Navegar a la pantalla de cargar imagen de comida (cuando se cree)
       console.log("Cargar imagen de mi comida");
     }
   };
@@ -38,10 +44,33 @@ export function RegistroComidaScreen({
     if (onCargarImagenEtiquetaPress) {
       onCargarImagenEtiquetaPress();
     } else {
-      // Navegar a la pantalla de cargar imagen de etiqueta (cuando se cree)
       console.log("Cargar imagen etiqueta nutricional");
     }
   };
+
+  const menuOptions: MenuOption[] = [
+    {
+      title: "Registro manual",
+      description: "Ingresa los datos nutricionales de tu comida manualmente",
+      icon: "pencil.and.list.clipboard",
+      accentColor: MetaFitColors.button.primary,
+      onPress: handleRegistroManual,
+    },
+    {
+      title: "Foto de mi comida",
+      description: "Toma o sube una foto y la IA analizará tu comida",
+      icon: "camera.fill",
+      accentColor: "#A78BFA",
+      onPress: handleCargarImagenComida,
+    },
+    {
+      title: "Etiqueta nutricional",
+      description: "Escanea la etiqueta del producto para importar sus datos",
+      icon: "barcode.viewfinder",
+      accentColor: MetaFitColors.calificacion.media,
+      onPress: handleCargarImagenEtiqueta,
+    },
+  ];
 
   return (
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
@@ -50,12 +79,12 @@ export function RegistroComidaScreen({
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <IconSymbol
             name="chevron.left"
-            size={24}
-            color={MetaFitColors.text.primary}
+            size={20}
+            color={MetaFitColors.text.secondary}
           />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
-          Registro de comida
+          Registrar comida
         </ThemedText>
         <View style={styles.headerSpacer} />
       </View>
@@ -65,30 +94,63 @@ export function RegistroComidaScreen({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Botones del menú */}
-        <TouchableOpacity style={styles.menuButton} onPress={handleRegistroManual}>
-          <ThemedText style={styles.menuButtonText} lightColor={MetaFitColors.text.primary}>
-            Registro manual
-          </ThemedText>
-        </TouchableOpacity>
+        {/* Subtitle */}
+        <ThemedText style={styles.subtitle} lightColor={MetaFitColors.text.secondary}>
+          ¿Cómo quieres registrar tu comida?
+        </ThemedText>
 
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={handleCargarImagenComida}
-        >
-          <ThemedText style={styles.menuButtonText} lightColor={MetaFitColors.text.primary}>
-            Cargar imagen de mi comida
-          </ThemedText>
-        </TouchableOpacity>
+        {/* Option cards */}
+        <View style={styles.optionsList}>
+          {menuOptions.map((option, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.optionCard}
+              onPress={option.onPress}
+              activeOpacity={0.75}
+            >
+              {/* Left accent stripe */}
+              <View style={[styles.accentStripe, { backgroundColor: option.accentColor }]} />
 
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={handleCargarImagenEtiqueta}
-        >
-          <ThemedText style={styles.menuButtonText} lightColor={MetaFitColors.text.primary}>
-            Cargar imagen etiqueta nutricional
+              {/* Icon */}
+              <View style={[styles.iconContainer, { backgroundColor: `${option.accentColor}18` }]}>
+                <IconSymbol
+                  name={option.icon as any}
+                  size={24}
+                  color={option.accentColor}
+                />
+              </View>
+
+              {/* Text */}
+              <View style={styles.optionTextGroup}>
+                <ThemedText style={styles.optionTitle} lightColor={MetaFitColors.text.primary}>
+                  {option.title}
+                </ThemedText>
+                <ThemedText style={styles.optionDescription} lightColor={MetaFitColors.text.secondary}>
+                  {option.description}
+                </ThemedText>
+              </View>
+
+              {/* Chevron */}
+              <IconSymbol
+                name="chevron.right"
+                size={16}
+                color={MetaFitColors.text.tertiary}
+              />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Info note */}
+        <View style={styles.infoNote}>
+          <IconSymbol
+            name="sparkles"
+            size={14}
+            color={MetaFitColors.button.primary}
+          />
+          <ThemedText style={styles.infoNoteText} lightColor={MetaFitColors.text.secondary}>
+            La IA analizará tu comida y te dará retroalimentación nutricional personalizada
           </ThemedText>
-        </TouchableOpacity>
+        </View>
       </ScrollView>
     </ThemedView>
   );
@@ -104,41 +166,92 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.divider,
+    paddingBottom: 16,
   },
   backButton: {
-    padding: 8,
-    marginRight: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
     flex: 1,
   },
   headerSpacer: {
-    width: 40,
+    width: 48,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
-    paddingTop: 30,
-  },
-  menuButton: {
-    backgroundColor: MetaFitColors.button.secondary,
-    paddingVertical: 20,
     paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 20,
-    alignItems: "center",
+    paddingTop: 8,
+    paddingBottom: 48,
   },
-  menuButtonText: {
+  subtitle: {
+    fontSize: 15,
+    marginBottom: 24,
+  },
+  optionsList: {
+    gap: 12,
+    marginBottom: 28,
+  },
+  optionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    overflow: "hidden",
+    paddingRight: 16,
+    gap: 14,
+  },
+  accentStripe: {
+    width: 4,
+    height: "100%",
+    minHeight: 80,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 16,
+  },
+  optionTextGroup: {
+    flex: 1,
+    paddingVertical: 18,
+    gap: 4,
+  },
+  optionTitle: {
     fontSize: 16,
-    fontWeight: "500",
-    color: MetaFitColors.text.primary,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  optionDescription: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  infoNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 14,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+  },
+  infoNoteText: {
+    fontSize: 13,
+    flex: 1,
+    lineHeight: 18,
   },
 });
-

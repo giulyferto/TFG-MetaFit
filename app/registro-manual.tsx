@@ -12,9 +12,9 @@ export default function RegistroManualPage() {
     fibra?: string;
     grasa?: string;
     desdeIA?: string;
+    imagenUri?: string;
   }>();
 
-  // Preparar datos iniciales si vienen de la IA
   const datosIniciales: DatosComida | undefined = params.desdeIA === 'true' ? {
     nombre: params.nombre || '',
     cantidad: params.cantidad || '',
@@ -51,6 +51,7 @@ export default function RegistroManualPage() {
   return (
     <RegistroManualScreen
       datosIniciales={datosIniciales}
+      imagenUri={params.imagenUri || undefined}
       onAgregarAlDiarioPress={handleAgregarAlDiario}
       onCancelarPress={handleCancelar}
     />
