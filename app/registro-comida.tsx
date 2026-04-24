@@ -109,6 +109,20 @@ export default function RegistroComidaPage() {
         return;
       }
 
+      // If the AI returned per-ingredient breakdown, go to the ingredients screen
+      if (resultado.ingredientes && resultado.ingredientes.length > 0) {
+        router.push({
+          pathname: '/ingredientes',
+          params: {
+            nombre: resultado.nombre || resultado.datosComida?.nombre || '',
+            ingredientesJson: JSON.stringify(resultado.ingredientes),
+            imagenUri: uri || imagenUri || '',
+          },
+        });
+        return;
+      }
+
+      // Fallback: single-item result (old-style or barcode)
       if (resultado.datosComida) {
         router.push({
           pathname: '/registro-manual',

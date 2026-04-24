@@ -1,20 +1,25 @@
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import type { Consumo } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from "react-native";
 
 type TablaConsumosProps = {
   consumos: Consumo[];
   isLoading: boolean;
   itemsPerPage?: number;
+  onEliminar?: (id: string) => void;
+  onEditar?: (consumo: Consumo) => void;
 };
 
 export function TablaConsumos({
   consumos,
   isLoading,
   itemsPerPage = 5,
+  onEliminar,
+  onEditar,
 }: TablaConsumosProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
@@ -97,6 +102,21 @@ export function TablaConsumos({
     );
   }
 
+  const handleEliminar = (consumo: Consumo) => {
+    Alert.alert(
+      "Eliminar registro",
+      `¿Eliminar "${consumo.nombre || consumo.tipoComida || "este registro"}"?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: () => onEliminar?.(consumo.id),
+        },
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Cards list */}
@@ -143,6 +163,36 @@ export function TablaConsumos({
                 />
               )}
             </View>
+
+            {/* Action buttons (only shown when handlers are provided) */}
+            {(onEditar || onEliminar) && (
+              <View style={styles.cardActions}>
+                {onEditar && (
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => onEditar(consumo)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol name="pencil" size={14} color={MetaFitColors.button.primary} />
+                    <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.button.primary}>
+                      Editar
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
+                {onEliminar && (
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.actionButtonDanger]}
+                    onPress={() => handleEliminar(consumo)}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol name="trash" size={14} color={MetaFitColors.calificacion.baja} />
+                    <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.calificacion.baja}>
+                      Eliminar
+                    </ThemedText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         ))}
       </View>
@@ -321,5 +371,29 @@ const styles = StyleSheet.create({
   paginationInfo: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  cardActions: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: MetaFitColors.border.light,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: MetaFitColors.background.elevated,
+  },
+  actionButtonDanger: {
+    backgroundColor: "rgba(201, 72, 72, 0.08)",
+  },
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

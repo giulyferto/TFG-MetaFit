@@ -26,6 +26,10 @@ export default function RootLayout() {
         <Stack.Screen name="registro-comida" />
         <Stack.Screen name="registro-manual" />
         <Stack.Screen name="feedback" />
+        <Stack.Screen name="editar-registro" />
+        <Stack.Screen name="mi-cuenta" />
+        <Stack.Screen name="exportar-historial" />
+        <Stack.Screen name="ingredientes" />
       </Stack>
       <StatusBar style="dark" />
     </ThemeProvider>

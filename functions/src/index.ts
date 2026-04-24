@@ -47,10 +47,34 @@ interface AnalizarImagenRequest {
   imagenBase64: string;
 }
 
+interface IngredienteIA {
+  nombre: string;
+  pesoEstimado: number;
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
+}
+
 interface AnalizarImagenResponse {
   esPlatoComida: boolean;
   datosComida?: DatosComida;
+  nombre?: string;
+  ingredientes?: IngredienteIA[];
   mensaje?: string;
+}
+
+interface ObtenerNutricionRequest {
+  nombre: string;
+}
+
+interface ObtenerNutricionResponse {
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
 }
 
 interface AnalizarCodigoBarrasRequest {
@@ -300,30 +324,32 @@ export const analizarImagenComida = onCall<AnalizarImagenRequest>(
 
 INSTRUCCIONES:
 1. Si la imagen NO muestra un plato de comida (por ejemplo, es un objeto, un animal, un paisaje, etc.), responde EXACTAMENTE con este JSON:
-{
-  "esPlatoComida": false,
-  "mensaje": "La imagen no parece ser un plato de comida"
-}
+{"esPlatoComida": false, "mensaje": "La imagen no parece ser un plato de comida"}
 
-2. Si la imagen SÍ muestra un plato de comida, analiza la comida visible y estima sus valores nutricionales. Responde EXACTAMENTE con este JSON:
+2. Si la imagen SÍ muestra un plato de comida, identifica CADA ingrediente visible por separado. Para cada ingrediente proporciona sus valores nutricionales estándar POR 100 GRAMOS y estima el peso (en gramos) de ese ingrediente en la porción visible. Responde EXACTAMENTE con este JSON:
 {
   "esPlatoComida": true,
-  "datosComida": {
-    "nombre": "nombre descriptivo del plato o comida",
-    "cantidad": "cantidad estimada en gramos (solo número, sin unidades)",
-    "energia": "energía en Kcal (solo número, sin unidades)",
-    "carb": "carbohidratos en gramos (solo número, sin unidades)",
-    "proteina": "proteínas en gramos (solo número, sin unidades)",
-    "fibra": "fibra en gramos (solo número, sin unidades)",
-    "grasa": "grasa en gramos (solo número, sin unidades)"
-  }
+  "nombre": "nombre descriptivo del plato completo",
+  "ingredientes": [
+    {
+      "nombre": "nombre del ingrediente",
+      "pesoEstimado": 60,
+      "energiaPor100g": 265,
+      "carbPor100g": 49,
+      "proteinaPor100g": 9,
+      "fibraPor100g": 3,
+      "grasaPor100g": 3
+    }
+  ]
 }
 
 IMPORTANTE:
 - Responde ÚNICAMENTE con el JSON, sin texto adicional antes o después
-- Los valores numéricos deben ser números como strings (ej: "250", "450", "30")
-- Si no puedes estimar un valor, usa "0"
-- El nombre debe ser descriptivo y claro`,
+- Todos los valores numéricos son NÚMEROS (no strings)
+- "pesoEstimado" es el peso en gramos del ingrediente en la porción del plato
+- Los valores "Por100g" son los valores nutricionales estándar por cada 100g de ese ingrediente
+- Identifica todos los ingredientes principales visibles de forma separada
+- Si no puedes estimar un valor numérico, usa 0`,
               },
               {
                 type: "image_url",
@@ -334,7 +360,7 @@ IMPORTANTE:
             ],
           },
         ],
-        max_tokens: 500,
+        max_tokens: 1500,
       });
 
       const contenido = response.choices[0]?.message?.content;
@@ -366,12 +392,49 @@ IMPORTANTE:
         };
       }
 
-      // Validar que todos los campos estén presentes
+      // New ingredient-based response
+      if (resultado.ingredientes && resultado.ingredientes.length > 0) {
+        const ingredientes: IngredienteIA[] = resultado.ingredientes.map((ing: any) => ({
+          nombre: ing.nombre || "Ingrediente",
+          pesoEstimado: Number(ing.pesoEstimado) || 0,
+          energiaPor100g: Number(ing.energiaPor100g) || 0,
+          carbPor100g: Number(ing.carbPor100g) || 0,
+          proteinaPor100g: Number(ing.proteinaPor100g) || 0,
+          fibraPor100g: Number(ing.fibraPor100g) || 0,
+          grasaPor100g: Number(ing.grasaPor100g) || 0,
+        }));
+
+        // Compute totals for backward-compat datosComida
+        const totalPeso = ingredientes.reduce((s, i) => s + i.pesoEstimado, 0);
+        const totalEnergia = ingredientes.reduce((s, i) => s + i.energiaPor100g * i.pesoEstimado / 100, 0);
+        const totalCarb = ingredientes.reduce((s, i) => s + i.carbPor100g * i.pesoEstimado / 100, 0);
+        const totalProteina = ingredientes.reduce((s, i) => s + i.proteinaPor100g * i.pesoEstimado / 100, 0);
+        const totalFibra = ingredientes.reduce((s, i) => s + i.fibraPor100g * i.pesoEstimado / 100, 0);
+        const totalGrasa = ingredientes.reduce((s, i) => s + i.grasaPor100g * i.pesoEstimado / 100, 0);
+
+        logger.info("Imagen analizada con ingredientes", { nombre: resultado.nombre, count: ingredientes.length });
+
+        return {
+          esPlatoComida: true,
+          nombre: resultado.nombre || "",
+          ingredientes,
+          datosComida: {
+            nombre: resultado.nombre || "",
+            cantidad: String(Math.round(totalPeso)),
+            energia: String(Math.round(totalEnergia)),
+            carb: String(Math.round(totalCarb)),
+            proteina: String(Math.round(totalProteina)),
+            fibra: String(Math.round(totalFibra)),
+            grasa: String(Math.round(totalGrasa)),
+          },
+        };
+      }
+
+      // Fallback: old-style datosComida response
       if (!resultado.datosComida) {
         throw new Error("No se pudieron extraer los datos nutricionales");
       }
 
-      // Asegurar que todos los campos tengan valores por defecto
       const datosComida: DatosComida = {
         nombre: resultado.datosComida.nombre || "",
         cantidad: resultado.datosComida.cantidad || "0",
@@ -382,15 +445,9 @@ IMPORTANTE:
         grasa: resultado.datosComida.grasa || "0",
       };
 
-      logger.info("Imagen analizada exitosamente", {
-        esPlatoComida: true,
-        nombre: datosComida.nombre,
-      });
+      logger.info("Imagen analizada exitosamente", { esPlatoComida: true, nombre: datosComida.nombre });
 
-      return {
-        esPlatoComida: true,
-        datosComida,
-      };
+      return { esPlatoComida: true, datosComida };
     } catch (error: any) {
       logger.error("Error al analizar imagen", error);
       throw new Error(
@@ -545,11 +602,73 @@ IMPORTANTE:
           `Error al analizar el código de barras: ${error.message}`
         );
       }
-      
+
       // Error desconocido
       throw new Error(
         "Error al analizar el código de barras: Error desconocido"
       );
+    }
+  }
+);
+
+/**
+ * Obtiene los valores nutricionales por 100g de un ingrediente dado su nombre
+ */
+export const obtenerNutricionIngrediente = onCall<ObtenerNutricionRequest>(
+  {
+    secrets: [openaiApiKey],
+    cors: true,
+  },
+  async (request) => {
+    try {
+      const { nombre } = request.data;
+      if (!nombre) throw new Error("Nombre del ingrediente requerido");
+
+      const openai = new OpenAI({ apiKey: openaiApiKey.value() });
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "user",
+            content: `Eres un experto nutricionista. Proporciona los valores nutricionales estándar por 100 gramos para: "${nombre}".
+
+Responde ÚNICAMENTE con este JSON (sin texto adicional):
+{
+  "energiaPor100g": número en kcal,
+  "carbPor100g": número en gramos,
+  "proteinaPor100g": número en gramos,
+  "fibraPor100g": número en gramos,
+  "grasaPor100g": número en gramos
+}
+
+Todos los valores son NÚMEROS. Si no conoces el alimento, usa estimaciones razonables. Si no puedes estimar un valor, usa 0.`,
+          },
+        ],
+        max_tokens: 150,
+      });
+
+      const contenido = response.choices[0]?.message?.content;
+      if (!contenido) throw new Error("Sin respuesta de OpenAI");
+
+      const jsonMatch = contenido.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No se encontró JSON en la respuesta");
+
+      const datos = JSON.parse(jsonMatch[0]);
+
+      const result: ObtenerNutricionResponse = {
+        energiaPor100g: Number(datos.energiaPor100g) || 0,
+        carbPor100g: Number(datos.carbPor100g) || 0,
+        proteinaPor100g: Number(datos.proteinaPor100g) || 0,
+        fibraPor100g: Number(datos.fibraPor100g) || 0,
+        grasaPor100g: Number(datos.grasaPor100g) || 0,
+      };
+
+      logger.info("Nutrición por 100g obtenida", { nombre, result });
+      return result;
+    } catch (error: any) {
+      logger.error("Error al obtener nutrición del ingrediente", error);
+      throw new Error(`Error al obtener valores nutricionales: ${error.message || "Error desconocido"}`);
     }
   }
 );

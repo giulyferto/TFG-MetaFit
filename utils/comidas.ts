@@ -115,11 +115,22 @@ export async function guardarComidaComoPlantilla(
  * @param comidaId - ID de la comida plantilla (opcional, si se guardó como plantilla)
  * @returns Promise con el ID del documento creado
  */
+export type IngredienteGuardado = {
+  nombre: string;
+  peso: string;
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
+};
+
 export async function guardarComidaEnDiario(
   datosComida: DatosComida,
   tipoComida: string,
   comidaId?: string,
-  imagenUri?: string
+  imagenUri?: string,
+  ingredientes?: IngredienteGuardado[]
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
@@ -143,6 +154,9 @@ export async function guardarComidaEnDiario(
 
     if (comidaId) {
       datosParaGuardar.comidaId = comidaId;
+    }
+    if (ingredientes && ingredientes.length > 0) {
+      datosParaGuardar.ingredientes = ingredientes;
     }
 
     const docRef = await addDoc(registrosRef, datosParaGuardar);

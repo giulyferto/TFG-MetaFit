@@ -67,11 +67,9 @@ export default function PerfilScreen() {
     {
       id: 'account',
       title: 'Mi cuenta',
-      subtitle: 'Gestionar información de cuenta',
+      subtitle: 'Cambiar contraseña · Eliminar cuenta',
       icon: 'person.circle',
-      onPress: () => {
-        Alert.alert('Mi Cuenta', 'Funcionalidad en desarrollo');
-      },
+      onPress: () => router.push('/mi-cuenta'),
     },
     {
       id: 'signout',

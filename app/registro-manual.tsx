@@ -1,5 +1,6 @@
 import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
 import { RegistroManualScreen } from '@/components/screens/registro-manual-screen';
+import type { IngredienteGuardado } from '@/utils/comidas';
 import { router, useLocalSearchParams } from 'expo-router';
 
 export default function RegistroManualPage() {
@@ -13,6 +14,7 @@ export default function RegistroManualPage() {
     grasa?: string;
     desdeIA?: string;
     imagenUri?: string;
+    ingredientesJson?: string;
   }>();
 
   const datosIniciales: DatosComida | undefined = params.desdeIA === 'true' ? {
@@ -25,8 +27,16 @@ export default function RegistroManualPage() {
     grasa: params.grasa || '',
   } : undefined;
 
+  let ingredientes: IngredienteGuardado[] | undefined;
+  if (params.ingredientesJson) {
+    try {
+      ingredientes = JSON.parse(params.ingredientesJson);
+    } catch {
+      ingredientes = undefined;
+    }
+  }
+
   const handleAgregarAlDiario = (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => {
-    // Navegar a la pantalla de feedback con los datos de la comida
     router.push({
       pathname: '/feedback',
       params: {
@@ -44,7 +54,6 @@ export default function RegistroManualPage() {
   };
 
   const handleCancelar = () => {
-    // Volver a la pantalla anterior
     router.back();
   };
 
@@ -52,9 +61,9 @@ export default function RegistroManualPage() {
     <RegistroManualScreen
       datosIniciales={datosIniciales}
       imagenUri={params.imagenUri || undefined}
+      ingredientes={ingredientes}
       onAgregarAlDiarioPress={handleAgregarAlDiario}
       onCancelarPress={handleCancelar}
     />
   );
 }
-

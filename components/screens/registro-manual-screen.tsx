@@ -4,16 +4,17 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior } from "@/utils/comidas";
+import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior, type IngredienteGuardado } from "@/utils/comidas";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
 type RegistroManualScreenProps = {
   datosIniciales?: DatosComida;
   imagenUri?: string;
+  ingredientes?: IngredienteGuardado[];
   onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
   onCancelarPress?: () => void;
 };
@@ -21,6 +22,7 @@ type RegistroManualScreenProps = {
 export function RegistroManualScreen({
   datosIniciales,
   imagenUri,
+  ingredientes,
   onAgregarAlDiarioPress,
   onCancelarPress,
 }: RegistroManualScreenProps) {
@@ -45,6 +47,21 @@ export function RegistroManualScreen({
 
   const tiposComida: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
 
+  // When ingredients are present, allow editing just the title
+  const [nombreEditable, setNombreEditable] = useState(datosIniciales?.nombre || "");
+  const [porciones, setPorciones] = useState(1);
+
+  const macroIngrediente = (ing: IngredienteGuardado) => {
+    const p = parseFloat(ing.peso) || 0;
+    return {
+      energia: Math.round(ing.energiaPor100g * p / 100),
+      carb: Math.round(ing.carbPor100g * p / 100 * 10) / 10,
+      proteina: Math.round(ing.proteinaPor100g * p / 100 * 10) / 10,
+      fibra: Math.round(ing.fibraPor100g * p / 100 * 10) / 10,
+      grasa: Math.round(ing.grasaPor100g * p / 100 * 10) / 10,
+    };
+  };
+
   const handleComidaSeleccionada = (comida: ComidaAnterior) => {
     // Cuando se selecciona una comida, llenar el formulario con sus datos
     setDatosComida({
@@ -68,48 +85,58 @@ export function RegistroManualScreen({
   };
 
   const handleAgregarAlDiario = async () => {
-    // Validar que haya un tipo de comida seleccionado
     if (!tipoComidaSeleccionado) {
       Alert.alert("Error", "Por favor selecciona un tipo de comida");
       return;
     }
 
-    // Validar que haya datos de comida (nombre mínimo)
-    if (!datosComida.nombre || datosComida.nombre.trim() === "") {
+    // When using ingredient breakdown, validate the editable title
+    const nombreFinal = ingredientes ? nombreEditable.trim() : datosComida.nombre?.trim();
+    if (!nombreFinal) {
       Alert.alert("Error", "Por favor ingresa el nombre de la comida");
       return;
     }
+
+    // Use the editable title + portion multiplier when ingredients are present
+    const datosParaGuardar: DatosComida = ingredientes
+      ? {
+          nombre: nombreFinal,
+          cantidad: datosComida.cantidad || "",
+          energia: String(Math.round(parseFloat(datosComida.energia || "0") * porciones)),
+          carb: String(Math.round(parseFloat(datosComida.carb || "0") * porciones * 10) / 10),
+          proteina: String(Math.round(parseFloat(datosComida.proteina || "0") * porciones * 10) / 10),
+          fibra: String(Math.round(parseFloat(datosComida.fibra || "0") * porciones * 10) / 10),
+          grasa: String(Math.round(parseFloat(datosComida.grasa || "0") * porciones * 10) / 10),
+        }
+      : datosComida;
 
     setIsSaving(true);
 
     try {
       let registroComidaId: string;
       
-      // Si hay una comida seleccionada del dropdown, usar su ID directamente
       if (comidaSeleccionadaId) {
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaSeleccionadaId, imagenUri);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, imagenUri, ingredientes);
       } else if (guardarComida) {
-        const comidaId = await guardarComidaComoPlantilla(datosComida);
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, comidaId, imagenUri);
+        const comidaId = await guardarComidaComoPlantilla(datosParaGuardar);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, imagenUri, ingredientes);
       } else {
-        registroComidaId = await guardarComidaEnDiario(datosComida, tipoComidaSeleccionado, undefined, imagenUri);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, imagenUri, ingredientes);
       }
-      
-      // Si hay una función callback, llamarla con los datos de la comida, el tipo y el ID del registro
+
       if (onAgregarAlDiarioPress) {
-        onAgregarAlDiarioPress(datosComida, tipoComidaSeleccionado, registroComidaId);
+        onAgregarAlDiarioPress(datosParaGuardar, tipoComidaSeleccionado, registroComidaId);
       } else {
-        // Navegar a la pantalla de feedback con los datos de la comida
         router.push({
           pathname: "/feedback",
           params: {
-            nombre: datosComida.nombre || "",
-            cantidad: datosComida.cantidad || "",
-            energia: datosComida.energia || "",
-            carb: datosComida.carb || "",
-            proteina: datosComida.proteina || "",
-            fibra: datosComida.fibra || "",
-            grasa: datosComida.grasa || "",
+            nombre: datosParaGuardar.nombre || "",
+            cantidad: datosParaGuardar.cantidad || "",
+            energia: datosParaGuardar.energia || "",
+            carb: datosParaGuardar.carb || "",
+            proteina: datosParaGuardar.proteina || "",
+            fibra: datosParaGuardar.fibra || "",
+            grasa: datosParaGuardar.grasa || "",
             tipoComida: tipoComidaSeleccionado || "",
             registroComidaId: registroComidaId || "",
           },
@@ -184,54 +211,150 @@ export function RegistroManualScreen({
           ))}
         </View>
 
-        {/* Buscar comidas anteriores */}
-        <BuscarComidasAnteriores
-          comidasSeleccionadas={comidasSeleccionadas}
-          onComidasSeleccionadasChange={(ids) => {
-            setComidasSeleccionadas(ids);
-            // Actualizar el ID de la comida seleccionada
-            if (ids.length === 0) {
-              // Si se deselecciona la comida, limpiar el ID
-              setComidaSeleccionadaId(null);
-            } else {
-              // Si hay comidas seleccionadas, usar la última seleccionada (o la primera)
-              // En este caso usamos la última para que sea la más reciente
-              setComidaSeleccionadaId(ids[ids.length - 1]);
-            }
-          }}
-          onComidaSeleccionada={handleComidaSeleccionada}
-          onDropdownToggle={setIsDropdownOpen}
-        />
-
-        {/* Tarjeta de detalles de comida - Solo mostrar si el dropdown no está abierto y no hay comidas seleccionadas */}
-        {!isDropdownOpen && comidasSeleccionadas.length === 0 && (
+        {/* ── Ingredient breakdown mode ── */}
+        {ingredientes && ingredientes.length > 0 ? (
           <>
-            <DetallesComidaCard
-              datos={datosComida}
-              onDatosChange={setDatosComida}
+            {/* Food photo hero */}
+            {imagenUri && (
+              <Image
+                source={{ uri: imagenUri }}
+                style={styles.heroImage}
+                resizeMode="cover"
+              />
+            )}
+
+            {/* Title + servings stepper */}
+            <View style={styles.titleCard}>
+              <TextInput
+                style={styles.tituloInput}
+                value={nombreEditable}
+                onChangeText={setNombreEditable}
+                placeholder="Nombre del plato"
+                placeholderTextColor={MetaFitColors.text.tertiary}
+                autoCapitalize="sentences"
+                returnKeyType="done"
+              />
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => setPorciones(p => Math.max(0.5, parseFloat((p - 0.5).toFixed(1))))}
+                >
+                  <ThemedText style={styles.stepperBtnText} lightColor={MetaFitColors.text.primary}>−</ThemedText>
+                </TouchableOpacity>
+                <ThemedText style={styles.stepperValue} lightColor={MetaFitColors.text.primary}>{porciones}</ThemedText>
+                <TouchableOpacity
+                  style={styles.stepperBtn}
+                  onPress={() => setPorciones(p => parseFloat((p + 0.5).toFixed(1)))}
+                >
+                  <ThemedText style={styles.stepperBtnText} lightColor={MetaFitColors.text.primary}>+</ThemedText>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Calorie spotlight card */}
+            <View style={styles.calorieCard}>
+              <View style={styles.calorieIconWrapper}>
+                <IconSymbol name="flame.fill" size={24} color={MetaFitColors.button.primary} />
+              </View>
+              <View>
+                <ThemedText style={styles.calorieLabel} lightColor={MetaFitColors.text.secondary}>Calorías</ThemedText>
+                <ThemedText style={styles.calorieValue} lightColor={MetaFitColors.text.primary}>
+                  {Math.round(parseFloat(datosComida.energia || "0") * porciones)}
+                </ThemedText>
+              </View>
+            </View>
+
+            {/* Macro chips */}
+            <View style={styles.macroChipsRow}>
+              {[
+                { label: "Proteína", value: datosComida.proteina, color: "#E8636A" },
+                { label: "Carbos",   value: datosComida.carb,      color: "#F5A623" },
+                { label: "Grasas",   value: datosComida.grasa,     color: MetaFitColors.button.primary },
+              ].map(({ label, value, color }) => (
+                <View key={label} style={styles.macroChip}>
+                  <View style={[styles.macroChipDot, { backgroundColor: color }]} />
+                  <ThemedText style={styles.macroChipLabel} lightColor={MetaFitColors.text.secondary}>{label}</ThemedText>
+                  <ThemedText style={styles.macroChipValue} lightColor={MetaFitColors.text.primary}>
+                    {Math.round(parseFloat(value || "0") * porciones * 10) / 10}g
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+
+            {/* Ingredients section */}
+            <View style={styles.ingredientsSection}>
+              <View style={styles.ingredientsHeader}>
+                <ThemedText style={styles.ingredientsTitle} lightColor={MetaFitColors.text.primary}>
+                  Ingredientes
+                </ThemedText>
+                <TouchableOpacity onPress={() => router.back()} style={styles.editIngBtn}>
+                  <ThemedText style={styles.editIngBtnText} lightColor={MetaFitColors.button.primary}>
+                    + Editar
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+              {ingredientes.map((ing, idx) => {
+                const m = macroIngrediente(ing);
+                return (
+                  <View key={idx} style={styles.ingRow}>
+                    <ThemedText style={styles.ingRowName} lightColor={MetaFitColors.text.primary} numberOfLines={1}>
+                      {ing.nombre}
+                    </ThemedText>
+                    <ThemedText style={styles.ingRowSep} lightColor={MetaFitColors.text.tertiary}> · </ThemedText>
+                    <ThemedText style={styles.ingRowCal} lightColor={MetaFitColors.text.secondary}>
+                      {Math.round(m.energia * porciones)} cal
+                    </ThemedText>
+                    <View style={styles.ingRowSpacer} />
+                    <ThemedText style={styles.ingRowQty} lightColor={MetaFitColors.text.tertiary}>
+                      {ing.peso}g
+                    </ThemedText>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        ) : (
+          <>
+            {/* ── Standard mode: search + full card ── */}
+            <BuscarComidasAnteriores
+              comidasSeleccionadas={comidasSeleccionadas}
+              onComidasSeleccionadasChange={(ids) => {
+                setComidasSeleccionadas(ids);
+                if (ids.length === 0) {
+                  setComidaSeleccionadaId(null);
+                } else {
+                  setComidaSeleccionadaId(ids[ids.length - 1]);
+                }
+              }}
+              onComidaSeleccionada={handleComidaSeleccionada}
+              onDropdownToggle={setIsDropdownOpen}
             />
 
-            {/* Checkbox para guardar comida como plantilla */}
-            <TouchableOpacity
-              style={styles.checkboxContainer}
-              onPress={() => setGuardarComida(!guardarComida)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.checkbox}>
-                {guardarComida && (
-                  <View style={styles.checkboxChecked}>
-                    <IconSymbol
-                      name="checkmark"
-                      size={16}
-                      color={MetaFitColors.text.white}
-                    />
+            {!isDropdownOpen && comidasSeleccionadas.length === 0 && (
+              <>
+                <DetallesComidaCard
+                  datos={datosComida}
+                  onDatosChange={setDatosComida}
+                />
+
+                <TouchableOpacity
+                  style={styles.checkboxContainer}
+                  onPress={() => setGuardarComida(!guardarComida)}
+                  activeOpacity={0.7}
+                >
+                  <View style={styles.checkbox}>
+                    {guardarComida && (
+                      <View style={styles.checkboxChecked}>
+                        <IconSymbol name="checkmark" size={16} color={MetaFitColors.text.white} />
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
-              <ThemedText style={styles.checkboxLabel} lightColor={MetaFitColors.text.primary}>
-                Guardar comida
-              </ThemedText>
-            </TouchableOpacity>
+                  <ThemedText style={styles.checkboxLabel} lightColor={MetaFitColors.text.primary}>
+                    Guardar comida
+                  </ThemedText>
+                </TouchableOpacity>
+              </>
+            )}
           </>
         )}
 
@@ -387,6 +510,178 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 15,
+    fontWeight: "500",
+  },
+
+  // ── Ingredient breakdown mode ──
+  heroImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 18,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  titleCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    gap: 12,
+  },
+  tituloInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+  },
+  stepper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.elevated,
+    borderRadius: 20,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+    gap: 2,
+  },
+  stepperBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MetaFitColors.background.card,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepperBtnText: {
+    fontSize: 18,
+    fontWeight: "600",
+    lineHeight: 22,
+  },
+  stepperValue: {
+    fontSize: 15,
+    fontWeight: "700",
+    minWidth: 28,
+    textAlign: "center",
+  },
+  calorieCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 12,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  calorieIconWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calorieLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  calorieValue: {
+    fontSize: 40,
+    fontWeight: "800",
+    letterSpacing: -1,
+  },
+  macroChipsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 20,
+  },
+  macroChip: {
+    flex: 1,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 12,
+    padding: 12,
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  macroChipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginBottom: 6,
+  },
+  macroChipLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  macroChipValue: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  ingredientsSection: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  ingredientsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  ingredientsTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  editIngBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    backgroundColor: MetaFitColors.background.elevated,
+  },
+  editIngBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  ingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: MetaFitColors.border.light,
+  },
+  ingRowName: {
+    fontSize: 14,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  ingRowSep: {
+    fontSize: 14,
+  },
+  ingRowCal: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  ingRowSpacer: {
+    flex: 1,
+  },
+  ingRowQty: {
+    fontSize: 13,
     fontWeight: "500",
   },
 });

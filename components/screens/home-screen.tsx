@@ -2,7 +2,7 @@ import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerUltimosConsumos, type Consumo } from "@/utils/consumos";
+import { obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, type ResumenNutricional } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -16,13 +16,18 @@ type HomeScreenProps = {
 export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
   const insets = useSafeAreaInsets();
   const [todosLosConsumos, setTodosLosConsumos] = useState<Consumo[]>([]);
+  const [resumenHoy, setResumenHoy] = useState<ResumenNutricional | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const cargarConsumos = useCallback(async () => {
     try {
       setIsLoading(true);
-      const consumos = await obtenerUltimosConsumos(1000);
+      const [consumos, resumen] = await Promise.all([
+        obtenerUltimosConsumos(1000),
+        obtenerResumenNutricionalDelDia(new Date()),
+      ]);
       setTodosLosConsumos(consumos);
+      setResumenHoy(resumen);
     } catch (error) {
       console.error("Error al cargar consumos:", error);
     } finally {
@@ -98,6 +103,51 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
               <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
                 Puntuación
               </ThemedText>
+            </View>
+          </View>
+        )}
+
+        {!isLoading && resumenHoy && resumenHoy.totalRegistros > 0 && (
+          <View style={styles.macroCard}>
+            <ThemedText style={styles.macroCardTitle} lightColor={MetaFitColors.text.secondary}>
+              Hoy
+            </ThemedText>
+            <View style={styles.macroRow}>
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.button.primary}>
+                  {Math.round(resumenHoy.energia)}
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  kcal
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {Math.round(resumenHoy.carb)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Carbos
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {Math.round(resumenHoy.proteina)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Proteína
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {Math.round(resumenHoy.grasa)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Grasa
+                </ThemedText>
+              </View>
             </View>
           </View>
         )}
@@ -261,5 +311,43 @@ const styles = StyleSheet.create({
   countBadgeText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  macroCard: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    padding: 14,
+    marginBottom: 14,
+  },
+  macroCardTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 10,
+  },
+  macroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  macroItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  macroDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: MetaFitColors.border.light,
+  },
+  macroValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+  macroLabel: {
+    fontSize: 10,
+    fontWeight: "500",
   },
 });

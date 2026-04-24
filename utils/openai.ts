@@ -77,10 +77,30 @@ export async function generarFeedbackNutricional(
   }
 }
 
+export type IngredienteIA = {
+  nombre: string;
+  pesoEstimado: number;
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
+};
+
 export type AnalizarImagenResponse = {
   esPlatoComida: boolean;
   datosComida?: DatosComida;
+  nombre?: string;
+  ingredientes?: IngredienteIA[];
   mensaje?: string;
+};
+
+export type NutricionPor100g = {
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
 };
 
 /**
@@ -120,6 +140,12 @@ export async function analizarImagenComida(
     
     throw new Error(mensajeError);
   }
+}
+
+export async function obtenerNutricionIngrediente(nombre: string): Promise<NutricionPor100g> {
+  const fn = httpsCallable<{ nombre: string }, NutricionPor100g>(functions, "obtenerNutricionIngrediente");
+  const result = await fn({ nombre });
+  return result.data;
 }
 
 export type AnalizarCodigoBarrasResponse = {

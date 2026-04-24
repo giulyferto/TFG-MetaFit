@@ -2,15 +2,23 @@ import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerConsumosPorFecha, type Consumo } from "@/utils/consumos";
+import {
+  eliminarRegistroComida,
+  obtenerConsumosPorFecha,
+  obtenerResumenNutricionalDelDia,
+  type Consumo,
+  type ResumenNutricional,
+} from "@/utils/consumos";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
+
 import { useCallback, useState } from "react";
-import { Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export function FeedbackListScreen() {
   const [consumos, setConsumos] = useState<Consumo[]>([]);
+  const [resumen, setResumen] = useState<ResumenNutricional | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [tempDate, setTempDate] = useState<Date>(new Date());
@@ -19,8 +27,12 @@ export function FeedbackListScreen() {
   const cargarConsumos = useCallback(async () => {
     try {
       setIsLoading(true);
-      const consumosFiltrados = await obtenerConsumosPorFecha(selectedDate);
+      const [consumosFiltrados, resumenDia] = await Promise.all([
+        obtenerConsumosPorFecha(selectedDate),
+        obtenerResumenNutricionalDelDia(selectedDate),
+      ]);
       setConsumos(consumosFiltrados);
+      setResumen(resumenDia);
     } catch (error) {
       console.error("Error al cargar consumos:", error);
     } finally {
@@ -62,6 +74,46 @@ export function FeedbackListScreen() {
     setShowDatePicker(false);
   };
 
+  const handlePreviousDay = () => {
+    const prev = new Date(selectedDate);
+    prev.setDate(prev.getDate() - 1);
+    setSelectedDate(prev);
+  };
+
+  const handleNextDay = () => {
+    const next = new Date(selectedDate);
+    next.setDate(next.getDate() + 1);
+    if (next <= new Date()) {
+      setSelectedDate(next);
+    }
+  };
+
+  const handleEditar = (consumo: Consumo) => {
+    router.push({
+      pathname: "/editar-registro",
+      params: {
+        registroId: consumo.id,
+        nombre: consumo.nombre || "",
+        cantidad: consumo.cantidad || "",
+        energia: consumo.energia || "",
+        carb: consumo.carb || "",
+        proteina: consumo.proteina || "",
+        fibra: consumo.fibra || "",
+        grasa: consumo.grasa || "",
+        tipoComida: consumo.tipoComida || "",
+      },
+    });
+  };
+
+  const handleEliminar = async (id: string) => {
+    try {
+      await eliminarRegistroComida(id);
+      await cargarConsumos();
+    } catch (error: any) {
+      Alert.alert("Error", `No se pudo eliminar: ${error.message || "Error desconocido"}`);
+    }
+  };
+
   const formatDate = (date: Date): string => {
     const dia = date.getDate().toString().padStart(2, "0");
     const mes = (date.getMonth() + 1).toString().padStart(2, "0");
@@ -78,6 +130,8 @@ export function FeedbackListScreen() {
     );
   };
 
+  const roundMacro = (val: number) => Math.round(val);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: MetaFitColors.background.white }]} edges={['top']}>
       <ScrollView
@@ -87,38 +141,57 @@ export function FeedbackListScreen() {
       >
         {/* Header */}
         <View style={styles.pageHeader}>
-          <ThemedText style={styles.pageTitle} lightColor={MetaFitColors.text.primary}>
-            Historial
-          </ThemedText>
+          <View style={styles.pageTitleRow}>
+            <ThemedText style={styles.pageTitle} lightColor={MetaFitColors.text.primary}>
+              Historial
+            </ThemedText>
+            <TouchableOpacity
+              style={styles.exportIconButton}
+              onPress={() => router.push("/exportar-historial")}
+              activeOpacity={0.7}
+            >
+              <IconSymbol name="arrow.down.doc" size={18} color={MetaFitColors.button.primary} />
+            </TouchableOpacity>
+          </View>
           <ThemedText style={styles.pageSubtitle} lightColor={MetaFitColors.text.secondary}>
             Revisa tus consumos por fecha
           </ThemedText>
         </View>
 
-        {/* Date selector */}
+        {/* Date navigation */}
         <View style={styles.dateSection}>
           <ThemedText style={styles.dateLabel} lightColor={MetaFitColors.text.secondary}>
             Fecha seleccionada
           </ThemedText>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={handleOpenDatePicker}
-            activeOpacity={0.8}
-          >
-            <IconSymbol
-              name="calendar"
-              size={18}
-              color={MetaFitColors.button.primary}
-            />
-            <ThemedText style={styles.dateButtonText} lightColor={MetaFitColors.text.primary}>
-              {isToday(selectedDate) ? "Hoy" : formatDate(selectedDate)}
-            </ThemedText>
-            <View style={styles.dateBadge}>
-              <ThemedText style={styles.dateBadgeText} lightColor={MetaFitColors.text.secondary}>
-                {formatDate(selectedDate)}
+          <View style={styles.dateNavRow}>
+            <TouchableOpacity style={styles.navArrow} onPress={handlePreviousDay} activeOpacity={0.7}>
+              <IconSymbol name="chevron.left" size={18} color={MetaFitColors.button.primary} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.dateButton}
+              onPress={handleOpenDatePicker}
+              activeOpacity={0.8}
+            >
+              <IconSymbol name="calendar" size={18} color={MetaFitColors.button.primary} />
+              <ThemedText style={styles.dateButtonText} lightColor={MetaFitColors.text.primary}>
+                {isToday(selectedDate) ? "Hoy" : formatDate(selectedDate)}
               </ThemedText>
-            </View>
-          </TouchableOpacity>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.navArrow, isToday(selectedDate) && styles.navArrowDisabled]}
+              onPress={handleNextDay}
+              activeOpacity={0.7}
+              disabled={isToday(selectedDate)}
+            >
+              <IconSymbol
+                name="chevron.right"
+                size={18}
+                color={isToday(selectedDate) ? MetaFitColors.text.tertiary : MetaFitColors.button.primary}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Date Picker */}
@@ -127,28 +200,16 @@ export function FeedbackListScreen() {
             {Platform.OS === "ios" && (
               <View style={styles.iosDatePickerContainer}>
                 <View style={styles.iosDatePickerHeader}>
-                  <TouchableOpacity
-                    onPress={handleCancelDate}
-                    style={styles.iosDatePickerButton}
-                  >
-                    <ThemedText
-                      style={styles.iosDatePickerCancelText}
-                      lightColor={MetaFitColors.text.secondary}
-                    >
+                  <TouchableOpacity onPress={handleCancelDate} style={styles.iosDatePickerButton}>
+                    <ThemedText style={styles.iosDatePickerCancelText} lightColor={MetaFitColors.text.secondary}>
                       Cancelar
                     </ThemedText>
                   </TouchableOpacity>
                   <ThemedText style={styles.iosPickerTitle} lightColor={MetaFitColors.text.primary}>
                     Seleccionar fecha
                   </ThemedText>
-                  <TouchableOpacity
-                    onPress={handleAcceptDate}
-                    style={styles.iosDatePickerButton}
-                  >
-                    <ThemedText
-                      style={styles.iosDatePickerAcceptText}
-                      lightColor={MetaFitColors.button.primary}
-                    >
+                  <TouchableOpacity onPress={handleAcceptDate} style={styles.iosDatePickerButton}>
+                    <ThemedText style={styles.iosDatePickerAcceptText} lightColor={MetaFitColors.button.primary}>
                       Aceptar
                     </ThemedText>
                   </TouchableOpacity>
@@ -175,6 +236,52 @@ export function FeedbackListScreen() {
           </>
         )}
 
+        {/* Macro summary card */}
+        {!isLoading && resumen && resumen.totalRegistros > 0 && (
+          <View style={styles.macroCard}>
+            <ThemedText style={styles.macroCardTitle} lightColor={MetaFitColors.text.primary}>
+              Resumen nutricional
+            </ThemedText>
+            <View style={styles.macroRow}>
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.button.primary}>
+                  {roundMacro(resumen.energia)}
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  kcal
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {roundMacro(resumen.carb)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Carbos
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {roundMacro(resumen.proteina)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Proteína
+                </ThemedText>
+              </View>
+              <View style={styles.macroDivider} />
+              <View style={styles.macroItem}>
+                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                  {roundMacro(resumen.grasa)}g
+                </ThemedText>
+                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                  Grasa
+                </ThemedText>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Consumos section */}
         <View style={styles.consumosSection}>
           <View style={styles.sectionHeader}>
@@ -190,7 +297,12 @@ export function FeedbackListScreen() {
             )}
           </View>
 
-          <TablaConsumos consumos={consumos} isLoading={isLoading} />
+          <TablaConsumos
+            consumos={consumos}
+            isLoading={isLoading}
+            onEditar={handleEditar}
+            onEliminar={handleEliminar}
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -213,6 +325,22 @@ const styles = StyleSheet.create({
   pageHeader: {
     marginBottom: 28,
   },
+  pageTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  exportIconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   pageTitle: {
     fontSize: 32,
     fontWeight: "800",
@@ -224,7 +352,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   dateSection: {
-    marginBottom: 24,
+    marginBottom: 16,
     gap: 8,
   },
   dateLabel: {
@@ -233,31 +361,40 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
     textTransform: "uppercase",
   },
+  dateNavRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  navArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  navArrowDisabled: {
+    opacity: 0.35,
+  },
   dateButton: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     backgroundColor: MetaFitColors.background.card,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
   },
   dateButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     flex: 1,
-  },
-  dateBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    backgroundColor: MetaFitColors.background.elevated,
-  },
-  dateBadgeText: {
-    fontSize: 12,
-    fontWeight: "500",
   },
   iosDatePickerContainer: {
     backgroundColor: MetaFitColors.background.card,
@@ -294,6 +431,44 @@ const styles = StyleSheet.create({
   },
   iosDatePicker: {
     height: 200,
+  },
+  macroCard: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    padding: 16,
+    marginBottom: 20,
+    gap: 12,
+  },
+  macroCardTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
+  macroRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  macroItem: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+  },
+  macroDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: MetaFitColors.border.light,
+  },
+  macroValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+  },
+  macroLabel: {
+    fontSize: 11,
+    fontWeight: "500",
   },
   consumosSection: {
     flex: 1,
