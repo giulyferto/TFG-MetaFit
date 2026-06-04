@@ -4,7 +4,7 @@ import { MetaFitColors } from "@/constants/theme";
 import type { Consumo } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActionSheetIOS, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const TIPO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   Desayuno: { label: "Desayuno", color: "#C47A2B", bg: "rgba(228, 160, 60, 0.12)" },
@@ -43,6 +43,7 @@ type TablaConsumosProps = {
   onEliminar?: (id: string) => void;
   onEditar?: (consumo: Consumo) => void;
   onReagregar?: (consumo: Consumo) => void;
+  actionsMode?: "inline" | "sheet";
 };
 
 export function TablaConsumos({
@@ -52,6 +53,7 @@ export function TablaConsumos({
   onEliminar,
   onEditar,
   onReagregar,
+  actionsMode = "inline",
 }: TablaConsumosProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
 
@@ -66,19 +68,19 @@ export function TablaConsumos({
 
   const getCalificacionColor = (calificacion: Consumo["calificacion"]) => {
     switch (calificacion) {
-      case "Alta":  return MetaFitColors.calificacion.alta;
-      case "Media": return MetaFitColors.calificacion.media;
-      case "Baja":  return MetaFitColors.calificacion.baja;
-      default:      return MetaFitColors.text.tertiary;
+      case "Muy saludable": case "Alta":  return MetaFitColors.calificacion.alta;
+      case "Equilibrada":   case "Media": return MetaFitColors.calificacion.media;
+      case "Poco nutritiva": case "Baja": return MetaFitColors.calificacion.baja;
+      default:                            return MetaFitColors.text.tertiary;
     }
   };
 
   const getCalificacionBg = (calificacion: Consumo["calificacion"]) => {
     switch (calificacion) {
-      case "Alta":  return "rgba(74, 158, 107, 0.1)";
-      case "Media": return "rgba(201, 148, 58, 0.1)";
-      case "Baja":  return "rgba(201, 72, 72, 0.1)";
-      default:      return MetaFitColors.background.elevated;
+      case "Muy saludable": case "Alta":   return "rgba(74, 158, 107, 0.1)";
+      case "Equilibrada":   case "Media":  return "rgba(201, 148, 58, 0.1)";
+      case "Poco nutritiva": case "Baja":  return "rgba(201, 72, 72, 0.1)";
+      default:                             return MetaFitColors.background.elevated;
     }
   };
 
@@ -120,6 +122,29 @@ export function TablaConsumos({
     );
   };
 
+  const handleCardPress = (consumo: Consumo) => {
+    const titulo = consumo.nombre || consumo.tipoComida || "Registro";
+    const opciones = ["Cancelar", "Editar", "Agregar de nuevo", "Eliminar"];
+
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: opciones, cancelButtonIndex: 0, destructiveButtonIndex: 3, title: titulo },
+        (idx) => {
+          if (idx === 1) onEditar?.(consumo);
+          else if (idx === 2) onReagregar?.(consumo);
+          else if (idx === 3) handleEliminar(consumo);
+        }
+      );
+    } else {
+      Alert.alert(titulo, undefined, [
+        { text: "Editar", onPress: () => onEditar?.(consumo) },
+        { text: "Agregar de nuevo", onPress: () => onReagregar?.(consumo) },
+        { text: "Eliminar", style: "destructive", onPress: () => handleEliminar(consumo) },
+        { text: "Cancelar", style: "cancel" },
+      ]);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.cardsList}>
@@ -134,8 +159,15 @@ export function TablaConsumos({
           const calColor = getCalificacionColor(consumo.calificacion);
           const calBg = getCalificacionBg(consumo.calificacion);
 
+          const CardWrapper = actionsMode === "sheet" && (onEditar || onReagregar || onEliminar)
+            ? TouchableOpacity
+            : View;
+          const cardWrapperProps = actionsMode === "sheet" && (onEditar || onReagregar || onEliminar)
+            ? { activeOpacity: 0.75, onPress: () => handleCardPress(consumo) }
+            : {};
+
           return (
-            <View key={consumo.id} style={styles.consumoCard}>
+            <CardWrapper key={consumo.id} style={styles.consumoCard} {...cardWrapperProps}>
               {/* Colored left accent bar */}
               <View style={[styles.accentBar, { backgroundColor: accentColor }]} />
 
@@ -181,8 +213,8 @@ export function TablaConsumos({
                   </View>
                 </View>
 
-                {/* Action buttons */}
-                {(onEditar || onEliminar || onReagregar) && (
+                {/* Action buttons — solo en modo inline */}
+                {actionsMode === "inline" && (onEditar || onEliminar || onReagregar) && (
                   <View style={styles.cardActions}>
                     {onReagregar && (
                       <TouchableOpacity
@@ -223,7 +255,7 @@ export function TablaConsumos({
                   </View>
                 )}
               </View>
-            </View>
+            </CardWrapper>
           );
         })}
       </View>

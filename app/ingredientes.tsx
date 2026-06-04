@@ -37,13 +37,32 @@ export default function IngredientesScreen() {
     nombre: string;
     imagenUri?: string;
     desdeManual?: string;
+    desdeEditar?: string;
+    desdeReagregar?: string;
+    registroId?: string;
     tipoComida?: string;
   }>();
 
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(() => {
     try {
       const parsed: any[] = JSON.parse(params.ingredientesJson || "[]");
-      return parsed.map((ia) => ingredienteDesdeIA(ia, nextId()));
+      return parsed.map((ia) => {
+        // Soporta tanto IngredienteIA (pesoEstimado) como IngredienteGuardado (peso)
+        const pesoVal = ia.peso !== undefined ? String(ia.peso) : String(ia.pesoEstimado ?? "");
+        if (ia.pesoEstimado !== undefined && ia.peso === undefined) {
+          return ingredienteDesdeIA(ia, nextId());
+        }
+        return {
+          id: nextId(),
+          nombre: ia.nombre,
+          peso: pesoVal,
+          energiaPor100g: ia.energiaPor100g,
+          carbPor100g: ia.carbPor100g,
+          proteinaPor100g: ia.proteinaPor100g,
+          fibraPor100g: ia.fibraPor100g,
+          grasaPor100g: ia.grasaPor100g,
+        };
+      });
     } catch {
       return [];
     }
@@ -117,6 +136,63 @@ export default function IngredientesScreen() {
     }
 
     const pesoTotal = ingredientes.reduce((s, i) => s + (parseFloat(i.peso) || 0), 0);
+
+    if (params.desdeReagregar === "true") {
+      router.replace({
+        pathname: "/reagregar-comida",
+        params: {
+          nombre: nombrePlato || "",
+          cantidad: String(Math.round(pesoTotal)),
+          energia: String(totales.energia),
+          carb: String(totales.carb),
+          proteina: String(totales.proteina),
+          fibra: String(totales.fibra),
+          grasa: String(totales.grasa),
+          tipoComida: tipoComida || "",
+          ingredientesJson: JSON.stringify(
+            ingredientes.map((ing) => ({
+              nombre: ing.nombre,
+              peso: ing.peso,
+              energiaPor100g: ing.energiaPor100g,
+              carbPor100g: ing.carbPor100g,
+              proteinaPor100g: ing.proteinaPor100g,
+              fibraPor100g: ing.fibraPor100g,
+              grasaPor100g: ing.grasaPor100g,
+            }))
+          ),
+        },
+      });
+      return;
+    }
+
+    if (params.desdeEditar === "true") {
+      router.replace({
+        pathname: "/editar-registro",
+        params: {
+          registroId: params.registroId || "",
+          nombre: nombrePlato || "",
+          cantidad: String(Math.round(pesoTotal)),
+          energia: String(totales.energia),
+          carb: String(totales.carb),
+          proteina: String(totales.proteina),
+          fibra: String(totales.fibra),
+          grasa: String(totales.grasa),
+          tipoComida: tipoComida || "",
+          ingredientesJson: JSON.stringify(
+            ingredientes.map((ing) => ({
+              nombre: ing.nombre,
+              peso: ing.peso,
+              energiaPor100g: ing.energiaPor100g,
+              carbPor100g: ing.carbPor100g,
+              proteinaPor100g: ing.proteinaPor100g,
+              fibraPor100g: ing.fibraPor100g,
+              grasaPor100g: ing.grasaPor100g,
+            }))
+          ),
+        },
+      });
+      return;
+    }
 
     const destino = {
       pathname: "/registro-manual" as const,

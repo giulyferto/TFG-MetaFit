@@ -21,7 +21,7 @@ type FeedbackScreenProps = {
 
 export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
-  const [calificacion, setCalificacion] = useState<"Alta" | "Media" | "Baja" | null>(null);
+  const [calificacion, setCalificacion] = useState<"Muy saludable" | "Equilibrada" | "Poco nutritiva" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -85,15 +85,15 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
 
   const getCalificacionColor = () => {
     if (!calificacion) return MetaFitColors.text.tertiary;
-    if (calificacion === "Alta") return MetaFitColors.calificacion.alta;
-    if (calificacion === "Media") return MetaFitColors.calificacion.media;
+    if (calificacion === "Muy saludable") return MetaFitColors.calificacion.alta;
+    if (calificacion === "Equilibrada") return MetaFitColors.calificacion.media;
     return MetaFitColors.calificacion.baja;
   };
 
   const getCalificacionBg = () => {
     if (!calificacion) return MetaFitColors.background.card;
-    if (calificacion === "Alta") return "rgba(74, 158, 107, 0.1)";
-    if (calificacion === "Media") return "rgba(201, 148, 58, 0.1)";
+    if (calificacion === "Muy saludable") return "rgba(74, 158, 107, 0.1)";
+    if (calificacion === "Equilibrada") return "rgba(201, 148, 58, 0.1)";
     return "rgba(201, 72, 72, 0.1)";
   };
 
@@ -167,7 +167,7 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
             </View>
           ) : (
             <Markdown style={markdownStyles}>
-              {feedbackText}
+              {feedbackText.replace(/\n*Calificaci[oó]n:\s*\[?(Muy[_ ]saludable|Equilibrada|Poco[_ ]nutritiv[ao]|Alta|Media|Baja)\]?\s*$/i, "").trim()}
             </Markdown>
           )}
         </View>

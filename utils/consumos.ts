@@ -1,9 +1,10 @@
 import { auth, db } from "@/firebase";
+import type { IngredienteGuardado } from "@/utils/comidas";
 import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 
 export type Consumo = {
   id: string;
-  calificacion: "Alta" | "Media" | "Baja" | null;
+  calificacion: "Muy saludable" | "Equilibrada" | "Poco nutritiva" | "Alta" | "Media" | "Baja" | null;
   descripcion: string;
   fechaCreacion: string;
   tipoComida?: string;
@@ -15,6 +16,7 @@ export type Consumo = {
   fibra?: string;
   grasa?: string;
   cantidad?: string;
+  ingredientes?: IngredienteGuardado[];
 };
 
 export type ResumenNutricional = {
@@ -59,7 +61,7 @@ export async function obtenerUltimosConsumos(limite: number = 10): Promise<Consu
     const feedbacksSnapshot = await getDocs(feedbacksQuery);
     
     // Crear un mapa de registroComidaId -> calificacion
-    const feedbacksMap = new Map<string, "Alta" | "Media" | "Baja">();
+    const feedbacksMap = new Map<string, "Muy saludable" | "Equilibrada" | "Poco nutritiva" | "Alta" | "Media" | "Baja">();
     feedbacksSnapshot.forEach((doc) => {
       const data = doc.data();
       if (data.registroComidaId && data.calificacion) {
@@ -103,6 +105,7 @@ export async function obtenerUltimosConsumos(limite: number = 10): Promise<Consu
         fibra: data.fibra || undefined,
         grasa: data.grasa || undefined,
         cantidad: data.cantidad || undefined,
+        ingredientes: data.ingredientes || undefined,
       });
     });
 
@@ -158,7 +161,7 @@ export async function obtenerConsumosPorFecha(fecha: Date): Promise<Consumo[]> {
     const feedbacksSnapshot = await getDocs(feedbacksQuery);
     
     // Crear un mapa de registroComidaId -> calificacion
-    const feedbacksMap = new Map<string, "Alta" | "Media" | "Baja">();
+    const feedbacksMap = new Map<string, "Muy saludable" | "Equilibrada" | "Poco nutritiva" | "Alta" | "Media" | "Baja">();
     feedbacksSnapshot.forEach((doc) => {
       const data = doc.data();
       if (data.registroComidaId && data.calificacion) {
@@ -207,6 +210,7 @@ export async function obtenerConsumosPorFecha(fecha: Date): Promise<Consumo[]> {
         fibra: data.fibra || undefined,
         grasa: data.grasa || undefined,
         cantidad: data.cantidad || undefined,
+        ingredientes: data.ingredientes || undefined,
       });
     });
 
@@ -277,6 +281,7 @@ export async function actualizarRegistroComida(
     fibra: string;
     grasa: string;
     tipoComida: string;
+    ingredientes: IngredienteGuardado[];
   }>
 ): Promise<void> {
   const user = auth.currentUser;
@@ -306,7 +311,7 @@ export async function obtenerConsumosPorRango(
     const feedbacksSnapshot = await getDocs(
       query(feedbacksRef, where("userId", "==", user.uid))
     );
-    const feedbacksMap = new Map<string, "Alta" | "Media" | "Baja">();
+    const feedbacksMap = new Map<string, "Muy saludable" | "Equilibrada" | "Poco nutritiva" | "Alta" | "Media" | "Baja">();
     feedbacksSnapshot.forEach((d) => {
       const data = d.data();
       if (data.registroComidaId && data.calificacion) {

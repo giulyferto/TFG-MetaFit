@@ -7,9 +7,10 @@ import { MetaFitColors } from "@/constants/theme";
 import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior, type IngredienteGuardado } from "@/utils/comidas";
 import { seleccionarImagen } from "@/utils/image";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 
@@ -52,6 +53,21 @@ export function RegistroManualScreen({
   );
 
   const [localFotoUri, setLocalFotoUri] = useState<string | null>(null);
+
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
+  const [tempFecha, setTempFecha] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const esHoy = (d: Date) => {
+    const hoy = new Date();
+    return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+  };
+  const formatFecha = (d: Date) => {
+    const dia = d.getDate().toString().padStart(2, "0");
+    const mes = (d.getMonth() + 1).toString().padStart(2, "0");
+    const anio = d.getFullYear();
+    return `${dia}/${mes}/${anio}`;
+  };
 
   const handleAgregarFoto = async () => {
     await seleccionarImagen(
@@ -156,12 +172,12 @@ export function RegistroManualScreen({
       
       const fotoFinal = localFotoUri || imagenUri;
       if (comidaSeleccionadaId) {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, fotoFinal, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, fotoFinal, ingredientes, fechaSeleccionada);
       } else if (guardarComida) {
         const comidaId = await guardarComidaComoPlantilla(datosParaGuardar);
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, fotoFinal, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, fotoFinal, ingredientes, fechaSeleccionada);
       } else {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes, fechaSeleccionada);
       }
 
       if (onAgregarAlDiarioPress) {
@@ -250,6 +266,63 @@ export function RegistroManualScreen({
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Selector de fecha */}
+        <TouchableOpacity
+          style={styles.fechaButton}
+          onPress={() => { setTempFecha(fechaSeleccionada); setShowDatePicker(true); }}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="calendar" size={16} color={MetaFitColors.button.primary} />
+          <ThemedText style={styles.fechaButtonText} lightColor={MetaFitColors.text.primary}>
+            {esHoy(fechaSeleccionada) ? "Hoy" : formatFecha(fechaSeleccionada)}
+          </ThemedText>
+        </TouchableOpacity>
+
+        {/* DatePicker */}
+        {showDatePicker && (
+          <>
+            {Platform.OS === "ios" && (
+              <View style={styles.iosPickerContainer}>
+                <View style={styles.iosPickerHeader}>
+                  <TouchableOpacity onPress={() => setShowDatePicker(false)} style={styles.iosPickerBtn}>
+                    <ThemedText style={styles.iosPickerCancelText} lightColor={MetaFitColors.text.secondary}>
+                      Cancelar
+                    </ThemedText>
+                  </TouchableOpacity>
+                  <ThemedText style={styles.iosPickerTitle} lightColor={MetaFitColors.text.primary}>
+                    Fecha del registro
+                  </ThemedText>
+                  <TouchableOpacity
+                    onPress={() => { setFechaSeleccionada(tempFecha); setShowDatePicker(false); }}
+                    style={styles.iosPickerBtn}
+                  >
+                    <ThemedText style={styles.iosPickerAceptarText} lightColor={MetaFitColors.button.primary}>
+                      Aceptar
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+                <DateTimePicker
+                  value={tempFecha}
+                  mode="date"
+                  display="spinner"
+                  maximumDate={new Date()}
+                  onChange={(_, d) => d && setTempFecha(d)}
+                  style={styles.iosPicker}
+                />
+              </View>
+            )}
+            {Platform.OS === "android" && (
+              <DateTimePicker
+                value={fechaSeleccionada}
+                mode="date"
+                display="default"
+                maximumDate={new Date()}
+                onChange={(e, d) => { setShowDatePicker(false); if (e.type === "set" && d) setFechaSeleccionada(d); }}
+              />
+            )}
+          </>
+        )}
 
         {/* ── Ingredient breakdown mode ── */}
         {ingredientes && ingredientes.length > 0 ? (
@@ -353,9 +426,9 @@ export function RegistroManualScreen({
               })}
             </View>
 
-            {/* Foto opcional */}
-            <View style={styles.fotoSection}>
-              {localFotoUri ? (
+            {/* Foto opcional — solo si no hay foto del escaneo ya adjunta */}
+            {localFotoUri && (
+              <View style={styles.fotoSection}>
                 <View style={styles.fotoPreviewRow}>
                   <Image source={{ uri: localFotoUri }} style={styles.fotoPreview} resizeMode="cover" />
                   <View style={styles.fotoPreviewInfo}>
@@ -372,15 +445,8 @@ export function RegistroManualScreen({
                     <IconSymbol name="pencil" size={14} color={MetaFitColors.button.primary} />
                   </TouchableOpacity>
                 </View>
-              ) : (
-                <TouchableOpacity style={styles.fotoAgregarBtn} onPress={handleAgregarFoto} activeOpacity={0.75}>
-                  <IconSymbol name="camera" size={16} color={MetaFitColors.text.secondary} />
-                  <ThemedText style={styles.fotoAgregarText} lightColor={MetaFitColors.text.secondary}>
-                    Agregar foto (opcional)
-                  </ThemedText>
-                </TouchableOpacity>
-              )}
-            </View>
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -457,7 +523,7 @@ export function RegistroManualScreen({
           </>
         )}
 
-        {/* Foto opcional (solo modo estándar) */}
+        {/* Foto opcional (solo modo estándar, sin foto de escaneo previa) */}
         {(!ingredientes || ingredientes.length === 0) && (
           <View style={styles.fotoSection}>
             {localFotoUri ? (
@@ -477,14 +543,14 @@ export function RegistroManualScreen({
                   <IconSymbol name="pencil" size={14} color={MetaFitColors.button.primary} />
                 </TouchableOpacity>
               </View>
-            ) : (
+            ) : !imagenUri ? (
               <TouchableOpacity style={styles.fotoAgregarBtn} onPress={handleAgregarFoto} activeOpacity={0.75}>
                 <IconSymbol name="camera" size={16} color={MetaFitColors.text.secondary} />
                 <ThemedText style={styles.fotoAgregarText} lightColor={MetaFitColors.text.secondary}>
                   Agregar foto (opcional)
                 </ThemedText>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
         )}
 
@@ -902,6 +968,59 @@ const styles = StyleSheet.create({
     backgroundColor: MetaFitColors.background.elevated,
     alignItems: "center",
     justifyContent: "center",
+  },
+  fechaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    backgroundColor: MetaFitColors.background.card,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    marginBottom: 20,
+  },
+  fechaButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  iosPickerContainer: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  iosPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: MetaFitColors.border.light,
+  },
+  iosPickerTitle: {
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  iosPickerBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+  },
+  iosPickerCancelText: {
+    fontSize: 15,
+    fontWeight: "500",
+  },
+  iosPickerAceptarText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  iosPicker: {
+    height: 200,
   },
 });
 

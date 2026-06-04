@@ -3,7 +3,7 @@ import { addDoc, collection } from "firebase/firestore";
 
 export type FeedbackParaGuardar = {
   texto: string;
-  calificacion: "Alta" | "Media" | "Baja";
+  calificacion: "Muy saludable" | "Equilibrada" | "Poco nutritiva";
   registroComidaId: string;
 };
 

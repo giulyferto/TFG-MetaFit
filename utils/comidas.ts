@@ -130,7 +130,8 @@ export async function guardarComidaEnDiario(
   tipoComida: string,
   comidaId?: string,
   imagenUri?: string,
-  ingredientes?: IngredienteGuardado[]
+  ingredientes?: IngredienteGuardado[],
+  fecha?: Date
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
@@ -149,7 +150,7 @@ export async function guardarComidaEnDiario(
       grasa: datosComida.grasa || "",
       tipoComida: tipoComida,
       userId: user.uid,
-      fechaCreacion: new Date().toISOString(),
+      fechaCreacion: (fecha ?? new Date()).toISOString(),
     };
 
     if (comidaId) {

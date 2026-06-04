@@ -2,11 +2,11 @@ import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, type ResumenNutricional } from "@/utils/consumos";
+import { eliminarRegistroComida, obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, type ResumenNutricional } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HomeScreenProps = {
@@ -53,8 +53,55 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
     }
   };
 
+  const handleEditar = (consumo: Consumo) => {
+    router.push({
+      pathname: "/editar-registro",
+      params: {
+        registroId: consumo.id,
+        nombre: consumo.nombre || "",
+        cantidad: consumo.cantidad || "",
+        energia: consumo.energia || "",
+        carb: consumo.carb || "",
+        proteina: consumo.proteina || "",
+        fibra: consumo.fibra || "",
+        grasa: consumo.grasa || "",
+        tipoComida: consumo.tipoComida || "",
+        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
+          ? JSON.stringify(consumo.ingredientes)
+          : "",
+      },
+    });
+  };
+
+  const handleReagregar = (consumo: Consumo) => {
+    router.push({
+      pathname: "/reagregar-comida",
+      params: {
+        nombre: consumo.nombre || "",
+        cantidad: consumo.cantidad || "",
+        energia: consumo.energia || "",
+        carb: consumo.carb || "",
+        proteina: consumo.proteina || "",
+        fibra: consumo.fibra || "",
+        grasa: consumo.grasa || "",
+        tipoComida: consumo.tipoComida || "",
+        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
+          ? JSON.stringify(consumo.ingredientes)
+          : "",
+      },
+    });
+  };
+
+  const handleEliminar = async (id: string) => {
+    try {
+      await eliminarRegistroComida(id);
+      await cargarConsumos();
+    } catch (error: any) {
+      Alert.alert("Error", `No se pudo eliminar: ${error.message || "Error desconocido"}`);
+    }
+  };
+
   const totalConsumos = todosLosConsumos.length;
-  const consumosAlta = todosLosConsumos.filter(c => c.calificacion === "Alta").length;
 
   return (
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
@@ -79,38 +126,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
           </View>
         </View>
 
-        {!isLoading && totalConsumos > 0 && (
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <ThemedText style={styles.statValue} lightColor={MetaFitColors.button.primary}>
-                {totalConsumos}
-              </ThemedText>
-              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
-                Registros
-              </ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statCard}>
-              <ThemedText style={styles.statValue} lightColor={MetaFitColors.calificacion.alta}>
-                {consumosAlta}
-              </ThemedText>
-              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
-                Calificación Alta
-              </ThemedText>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statCard}>
-              <ThemedText style={styles.statValue} lightColor={MetaFitColors.calificacion.media}>
-                {totalConsumos > 0 ? Math.round((consumosAlta / totalConsumos) * 100) : 0}%
-              </ThemedText>
-              <ThemedText style={styles.statLabel} lightColor={MetaFitColors.text.secondary}>
-                Puntuación
-              </ThemedText>
-            </View>
-          </View>
-        )}
-
-        {!isLoading && resumenHoy && resumenHoy.totalRegistros > 0 && (
+        {!isLoading && (
           <View style={styles.macroCard}>
             <ThemedText style={styles.macroCardTitle} lightColor={MetaFitColors.text.secondary}>
               Hoy
@@ -118,7 +134,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
             <View style={styles.macroRow}>
               <View style={styles.macroItem}>
                 <ThemedText style={styles.macroValue} lightColor={MetaFitColors.button.primary}>
-                  {Math.round(resumenHoy.energia)}
+                  {Math.round(resumenHoy?.energia ?? 0)}
                 </ThemedText>
                 <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
                   kcal
@@ -127,7 +143,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
                 <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
-                  {Math.round(resumenHoy.carb)}g
+                  {Math.round(resumenHoy?.carb ?? 0)}g
                 </ThemedText>
                 <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
                   Carbos
@@ -136,7 +152,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
                 <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
-                  {Math.round(resumenHoy.proteina)}g
+                  {Math.round(resumenHoy?.proteina ?? 0)}g
                 </ThemedText>
                 <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
                   Proteína
@@ -145,7 +161,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
                 <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
-                  {Math.round(resumenHoy.grasa)}g
+                  {Math.round(resumenHoy?.grasa ?? 0)}g
                 </ThemedText>
                 <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
                   Grasa
@@ -184,7 +200,15 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
           )}
         </View>
 
-        <TablaConsumos consumos={todosLosConsumos} isLoading={isLoading} itemsPerPage={5} />
+        <TablaConsumos
+          consumos={todosLosConsumos}
+          isLoading={isLoading}
+          itemsPerPage={5}
+          actionsMode="sheet"
+          onEditar={handleEditar}
+          onReagregar={handleReagregar}
+          onEliminar={handleEliminar}
+        />
       </ScrollView>
     </ThemedView>
   );
@@ -223,35 +247,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.5,
     lineHeight: 30,
-  },
-  statsRow: {
-    flexDirection: "row",
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: "center",
-    gap: 3,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: MetaFitColors.border.light,
-    marginVertical: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: "500",
-    textAlign: "center",
   },
   cargarComidaButton: {
     backgroundColor: MetaFitColors.button.primary,

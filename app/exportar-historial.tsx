@@ -60,18 +60,18 @@ function redondear(val: string | undefined): string {
 
 function calificacionHexColor(cal: Consumo["calificacion"]): string {
   switch (cal) {
-    case "Alta": return "#4A9E6B";
-    case "Media": return "#C9943A";
-    case "Baja": return "#C94848";
+    case "Muy saludable": case "Alta":   return "#4A9E6B";
+    case "Equilibrada":   case "Media":  return "#C9943A";
+    case "Poco nutritiva": case "Baja":  return "#C94848";
     default: return "#A8B8C4";
   }
 }
 
 function getCalificacionColor(cal: Consumo["calificacion"]): string {
   switch (cal) {
-    case "Alta": return MetaFitColors.calificacion.alta;
-    case "Media": return MetaFitColors.calificacion.media;
-    case "Baja": return MetaFitColors.calificacion.baja;
+    case "Muy saludable": case "Alta":   return MetaFitColors.calificacion.alta;
+    case "Equilibrada":   case "Media":  return MetaFitColors.calificacion.media;
+    case "Poco nutritiva": case "Baja":  return MetaFitColors.calificacion.baja;
     default: return MetaFitColors.text.tertiary;
   }
 }

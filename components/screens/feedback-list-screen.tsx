@@ -101,6 +101,9 @@ export function FeedbackListScreen() {
         fibra: consumo.fibra || "",
         grasa: consumo.grasa || "",
         tipoComida: consumo.tipoComida || "",
+        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
+          ? JSON.stringify(consumo.ingredientes)
+          : "",
       },
     });
   };
@@ -117,6 +120,9 @@ export function FeedbackListScreen() {
         fibra: consumo.fibra || "",
         grasa: consumo.grasa || "",
         tipoComida: consumo.tipoComida || "",
+        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
+          ? JSON.stringify(consumo.ingredientes)
+          : "",
       },
     });
   };

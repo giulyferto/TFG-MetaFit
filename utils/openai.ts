@@ -5,7 +5,7 @@ import { getNutritionalProfile } from "./nutritional-profile";
 
 export type FeedbackNutricional = {
   texto: string;
-  calificacion: "Alta" | "Media" | "Baja";
+  calificacion: "Muy saludable" | "Equilibrada" | "Poco nutritiva";
 };
 
 /**
@@ -25,6 +25,11 @@ export async function generarFeedbackNutricional(
     // Preparar el perfil para enviar a la función
     const perfilParaEnviar = perfilNutricional
       ? {
+          edad: perfilNutricional.edad,
+          sexo: perfilNutricional.sexo,
+          altura: perfilNutricional.altura,
+          peso: perfilNutricional.peso,
+          ejercicio: perfilNutricional.ejercicio,
           objetivos: perfilNutricional.objetivos,
           preferenciaNutricional: perfilNutricional.preferenciaNutricional,
           restricciones: perfilNutricional.restricciones,
@@ -37,6 +42,11 @@ export async function generarFeedbackNutricional(
         datosComida: DatosComida;
         tipoComida?: string;
         perfilNutricional?: {
+          edad?: string;
+          sexo?: string;
+          altura?: string;
+          peso?: string;
+          ejercicio?: string;
           objetivos?: string | string[];
           preferenciaNutricional?: string;
           restricciones?: string[];
@@ -72,7 +82,7 @@ export async function generarFeedbackNutricional(
     // Retornar un feedback por defecto en caso de error
     return {
       texto: mensajeError,
-      calificacion: "Media",
+      calificacion: "Equilibrada",
     };
   }
 }

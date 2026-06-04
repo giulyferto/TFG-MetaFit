@@ -27,6 +27,11 @@ interface DatosComida {
 }
 
 interface PerfilNutricional {
+  edad?: string;
+  sexo?: string;
+  altura?: string;
+  peso?: string;
+  ejercicio?: string;
   objetivos?: string | string[];
   preferenciaNutricional?: string;
   restricciones?: string[];
@@ -40,7 +45,7 @@ interface FeedbackRequest {
 
 interface FeedbackResponse {
   texto: string;
-  calificacion: "Alta" | "Media" | "Baja";
+  calificacion: "Muy saludable" | "Equilibrada" | "Poco nutritiva";
 }
 
 interface AnalizarImagenRequest {
@@ -180,6 +185,21 @@ function construirPrompt(
 
   if (perfilNutricional) {
     prompt += `**Perfil del usuario:**\n`;
+    if (perfilNutricional.edad) {
+      prompt += `- Edad: ${perfilNutricional.edad} años\n`;
+    }
+    if (perfilNutricional.sexo) {
+      prompt += `- Sexo: ${perfilNutricional.sexo}\n`;
+    }
+    if (perfilNutricional.altura) {
+      prompt += `- Altura: ${perfilNutricional.altura} cm\n`;
+    }
+    if (perfilNutricional.peso) {
+      prompt += `- Peso: ${perfilNutricional.peso} kg\n`;
+    }
+    if (perfilNutricional.ejercicio) {
+      prompt += `- Nivel de actividad física: ${perfilNutricional.ejercicio}\n`;
+    }
     if (perfilNutricional.objetivos) {
       const objetivos = Array.isArray(perfilNutricional.objetivos)
         ? perfilNutricional.objetivos.join(", ")
@@ -193,7 +213,7 @@ function construirPrompt(
       perfilNutricional.restricciones &&
       perfilNutricional.restricciones.length > 0
     ) {
-      prompt += `- Restricciones: ${perfilNutricional.restricciones.join(", ")}\n`;
+      prompt += `- Restricciones dietéticas: ${perfilNutricional.restricciones.join(", ")}\n`;
     }
     prompt += `\n`;
   }
@@ -220,14 +240,14 @@ function construirPrompt(
   prompt += `\n\n`;
   prompt += `4. **Calificación** (OBLIGATORIO al final, en una línea separada):\n`;
   prompt += `   Debes terminar EXACTAMENTE con una de estas líneas:\n`;
-  prompt += `   - "Calificación: [ALTA]"\n`;
-  prompt += `   - "Calificación: [MEDIA]"\n`;
-  prompt += `   - "Calificación: [BAJA]"\n\n`;
+  prompt += `   - "Calificación: [MUY_SALUDABLE]"\n`;
+  prompt += `   - "Calificación: [EQUILIBRADA]"\n`;
+  prompt += `   - "Calificación: [POCO_NUTRITIVA]"\n\n`;
   prompt += `REGLAS IMPORTANTES:\n`;
   prompt += `- Sé BREVE: máximo 150 palabras en total\n`;
   prompt += `- Usa **texto en negrita** solo para los títulos de cada sección\n`;
   prompt += `- La calificación DEBE estar al final, en una línea separada\n`;
-  prompt += `- Usa SOLO [ALTA], [MEDIA] o [BAJA] - NO uses "MEDIO" u otras variantes\n`;
+  prompt += `- Usa SOLO [MUY_SALUDABLE], [EQUILIBRADA] o [POCO_NUTRITIVA] - NO uses otras variantes\n`;
   prompt += `- Responde en español\n`;
 
   return prompt;
@@ -238,54 +258,43 @@ function construirPrompt(
  * Busca primero los marcadores específicos [ALTA], [MEDIA], [BAJA]
  * y luego busca las palabras cerca del final del texto
  */
-function extraerCalificacion(texto: string): "Alta" | "Media" | "Baja" {
+function extraerCalificacion(texto: string): "Muy saludable" | "Equilibrada" | "Poco nutritiva" {
   const textoUpper = texto.toUpperCase();
 
-  // Buscar primero los marcadores específicos [ALTA], [MEDIA], [BAJA]
-  // Estos son más confiables porque están en el formato solicitado
-  if (textoUpper.includes("[BAJA]")) {
-    return "Baja";
+  // Marcadores nuevos
+  if (textoUpper.includes("[MUY_SALUDABLE]") || textoUpper.includes("[MUY SALUDABLE]")) {
+    return "Muy saludable";
   }
-  if (textoUpper.includes("[ALTA]")) {
-    return "Alta";
+  if (textoUpper.includes("[POCO_NUTRITIVA]") || textoUpper.includes("[POCO NUTRITIVA]") || textoUpper.includes("[POCO_NUTRITIVO]")) {
+    return "Poco nutritiva";
   }
-  if (textoUpper.includes("[MEDIA]")) {
-    return "Media";
+  if (textoUpper.includes("[EQUILIBRADA]") || textoUpper.includes("[EQUILIBRADO]")) {
+    return "Equilibrada";
   }
 
-  // Si no encuentra marcadores, buscar en las últimas 200 caracteres
-  // donde normalmente está la calificación
-  const ultimas200Caracteres = textoUpper.slice(-200);
-  
-  // Buscar patrones como "calificación: [BAJA]" o "calificación: BAJA"
-  // También buscar "MEDIO" como variante de "MEDIA"
-  const patronCalificacion = /CALIFICACI[ÓO]N\s*:?\s*\[?(BAJA|ALTA|MEDIA|MEDIO)\]?/i;
-  const match = ultimas200Caracteres.match(patronCalificacion);
-  
+  // Marcadores legacy [ALTA], [MEDIA], [BAJA] por si el modelo los usa
+  if (textoUpper.includes("[ALTA]")) return "Muy saludable";
+  if (textoUpper.includes("[BAJA]")) return "Poco nutritiva";
+  if (textoUpper.includes("[MEDIA]")) return "Equilibrada";
+
+  // Buscar en las últimas 200 caracteres
+  const ultimas200 = textoUpper.slice(-200);
+  const patron = /CALIFICACI[ÓO]N\s*:?\s*\[?(MUY[_ ]SALUDABLE|POCO[_ ]NUTRITIV[AO]|EQUILIBRAD[AO]|ALTA|MEDIA|BAJA|MEDIO)\]?/i;
+  const match = ultimas200.match(patron);
+
   if (match) {
-    const calif = match[1].toUpperCase();
-    if (calif === "BAJA") return "Baja";
-    if (calif === "ALTA") return "Alta";
-    // Normalizar "MEDIO" a "Media"
-    if (calif === "MEDIA" || calif === "MEDIO") return "Media";
+    const v = match[1].toUpperCase().replace(" ", "_");
+    if (v === "MUY_SALUDABLE" || v === "ALTA") return "Muy saludable";
+    if (v.startsWith("POCO") || v === "BAJA") return "Poco nutritiva";
+    if (v.startsWith("EQUILIBR") || v === "MEDIA" || v === "MEDIO") return "Equilibrada";
   }
 
-  // Buscar las palabras sueltas en las últimas 200 caracteres
-  // Priorizar BAJA sobre ALTA para evitar falsos positivos
-  // También buscar variantes como "MEDIO" que OpenAI podría usar
-  if (ultimas200Caracteres.includes("BAJA")) {
-    return "Baja";
-  }
-  if (ultimas200Caracteres.includes("ALTA")) {
-    return "Alta";
-  }
-  // Buscar tanto "MEDIA" como "MEDIO" (variante que OpenAI podría usar)
-  if (ultimas200Caracteres.includes("MEDIA") || ultimas200Caracteres.includes("MEDIO")) {
-    return "Media";
-  }
+  // Palabras sueltas al final del texto
+  if (ultimas200.includes("MUY SALUDABLE") || ultimas200.includes("MUY_SALUDABLE")) return "Muy saludable";
+  if (ultimas200.includes("POCO NUTRITIV") || ultimas200.includes("POCO_NUTRITIV")) return "Poco nutritiva";
+  if (ultimas200.includes("EQUILIBRAD")) return "Equilibrada";
 
-  // Si no encuentra nada, retornar Media por defecto
-  return "Media";
+  return "Equilibrada";
 }
 
 /**
