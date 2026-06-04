@@ -131,7 +131,8 @@ export async function guardarComidaEnDiario(
   comidaId?: string,
   imagenUri?: string,
   ingredientes?: IngredienteGuardado[],
-  fecha?: Date
+  fecha?: Date,
+  imagenUrlExistente?: string
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
@@ -158,6 +159,9 @@ export async function guardarComidaEnDiario(
     }
     if (ingredientes && ingredientes.length > 0) {
       datosParaGuardar.ingredientes = ingredientes;
+    }
+    if (imagenUrlExistente) {
+      datosParaGuardar.imagenUrl = imagenUrlExistente;
     }
 
     const docRef = await addDoc(registrosRef, datosParaGuardar);

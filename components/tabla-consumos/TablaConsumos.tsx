@@ -175,13 +175,62 @@ export function TablaConsumos({
               <View style={styles.cardBody}>
                 {/* Top: name + thumbnail */}
                 <View style={styles.topRow}>
-                  <ThemedText
-                    style={styles.nombreText}
-                    lightColor={MetaFitColors.text.primary}
-                    numberOfLines={2}
-                  >
-                    {nombre}
-                  </ThemedText>
+                  <View style={styles.topRowLeft}>
+                    <ThemedText
+                      style={styles.nombreText}
+                      lightColor={MetaFitColors.text.primary}
+                      numberOfLines={2}
+                    >
+                      {nombre}
+                    </ThemedText>
+
+                    {/* Nutrition strip */}
+                    {consumo.energia && (
+                      <View style={styles.nutritionStrip}>
+                        {/* Calories chip */}
+                        <View style={styles.calChip}>
+                          <ThemedText style={styles.calValue} lightColor={MetaFitColors.button.primary}>
+                            {Math.round(parseFloat(consumo.energia))}
+                          </ThemedText>
+                          <ThemedText style={styles.calUnit} lightColor={MetaFitColors.text.tertiary}>
+                            kcal
+                          </ThemedText>
+                        </View>
+
+                        {/* Proportional macro bar + labels */}
+                        {consumo.proteina && consumo.carb && consumo.grasa && (() => {
+                          const p = parseFloat(consumo.proteina) * 4;
+                          const c = parseFloat(consumo.carb) * 4;
+                          const g = parseFloat(consumo.grasa) * 9;
+                          const total = p + c + g;
+                          if (total === 0) return null;
+                          return (
+                            <View style={styles.macroBarWrapper}>
+                              <View style={styles.macroBar}>
+                                <View style={[styles.macroSegment, { flex: p / total, backgroundColor: "#E8636A" }]} />
+                                <View style={[styles.macroSegment, { flex: c / total, backgroundColor: "#E8A542" }]} />
+                                <View style={[styles.macroSegment, { flex: g / total, backgroundColor: MetaFitColors.button.primary }]} />
+                              </View>
+                              <View style={styles.macroLabels}>
+                                <ThemedText style={[styles.macroLabel, { color: "#E8636A" }]}>
+                                  P {Math.round(parseFloat(consumo.proteina))}g
+                                </ThemedText>
+                                <ThemedText style={styles.macroDivider} lightColor={MetaFitColors.text.tertiary}>·</ThemedText>
+                                <ThemedText style={[styles.macroLabel, { color: "#C47A2B" }]}>
+                                  C {Math.round(parseFloat(consumo.carb))}g
+                                </ThemedText>
+                                <ThemedText style={styles.macroDivider} lightColor={MetaFitColors.text.tertiary}>·</ThemedText>
+                                <ThemedText style={[styles.macroLabel, { color: MetaFitColors.button.primary }]}>
+                                  G {Math.round(parseFloat(consumo.grasa))}g
+                                </ThemedText>
+                              </View>
+                            </View>
+                          );
+                        })()}
+                      </View>
+                    )}
+                  </View>
+
                   {consumo.imagenUrl && (
                     <Image
                       source={{ uri: consumo.imagenUrl }}
@@ -379,8 +428,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     gap: 10,
   },
-  nombreText: {
+  topRowLeft: {
     flex: 1,
+    gap: 6,
+  },
+  nombreText: {
     fontSize: 15,
     fontWeight: "600",
     lineHeight: 21,
@@ -390,6 +442,63 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 9,
     flexShrink: 0,
+  },
+
+  // Nutrition strip
+  nutritionStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  calChip: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 2,
+    backgroundColor: MetaFitColors.background.elevated,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+    flexShrink: 0,
+  },
+  calValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: -0.3,
+  },
+  calUnit: {
+    fontSize: 10,
+    fontWeight: "500",
+  },
+  macroBarWrapper: {
+    flex: 1,
+    gap: 4,
+  },
+  macroBar: {
+    flexDirection: "row",
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+    gap: 1,
+  },
+  macroSegment: {
+    borderRadius: 3,
+  },
+  macroLabels: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  macroLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+  macroDivider: {
+    fontSize: 9,
+    fontWeight: "400",
   },
 
   // Metadata row: tipo · fecha  [spacer]  calificación

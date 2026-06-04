@@ -19,7 +19,7 @@ type RegistroManualScreenProps = {
   imagenUri?: string;
   ingredientes?: IngredienteGuardado[];
   tipoComidaInicial?: string;
-  onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
+  onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string, ingredientes?: IngredienteGuardado[]) => void;
   onCancelarPress?: () => void;
 };
 
@@ -181,7 +181,7 @@ export function RegistroManualScreen({
       }
 
       if (onAgregarAlDiarioPress) {
-        onAgregarAlDiarioPress(datosParaGuardar, tipoComidaSeleccionado, registroComidaId);
+        onAgregarAlDiarioPress(datosParaGuardar, tipoComidaSeleccionado, registroComidaId, ingredientes);
       } else {
         router.push({
           pathname: "/feedback",
@@ -195,6 +195,7 @@ export function RegistroManualScreen({
             grasa: datosParaGuardar.grasa || "",
             tipoComida: tipoComidaSeleccionado || "",
             registroComidaId: registroComidaId || "",
+            ingredientesJson: ingredientes && ingredientes.length > 0 ? JSON.stringify(ingredientes) : "",
           },
         });
       }

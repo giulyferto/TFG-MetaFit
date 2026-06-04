@@ -1,5 +1,6 @@
-import { auth } from "@/firebase";
+import { auth, storage } from "@/firebase";
 import * as FileSystem from "expo-file-system/legacy";
+import { getDownloadURL, ref } from "firebase/storage";
 
 const BUCKET = "tfg-metafit.firebasestorage.app";
 
@@ -25,7 +26,5 @@ export async function subirImagenComida(uri: string, registroId: string): Promis
     throw new Error(`Error al subir imagen: ${result.status} ${result.body}`);
   }
 
-  const metadata = JSON.parse(result.body);
-  const downloadToken = metadata.downloadTokens;
-  return `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${encodeURIComponent(path)}?alt=media&token=${downloadToken}`;
+  return getDownloadURL(ref(storage, path));
 }

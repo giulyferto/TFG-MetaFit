@@ -1,6 +1,7 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { functions } from "@/firebase";
 import { httpsCallable } from "firebase/functions";
+import type { IngredienteGuardado } from "./comidas";
 import { getNutritionalProfile } from "./nutritional-profile";
 
 export type FeedbackNutricional = {
@@ -16,7 +17,8 @@ export type FeedbackNutricional = {
  */
 export async function generarFeedbackNutricional(
   datosComida: DatosComida,
-  tipoComida?: string
+  tipoComida?: string,
+  ingredientes?: IngredienteGuardado[]
 ): Promise<FeedbackNutricional> {
   try {
     // Obtener el perfil nutricional del usuario si está disponible
@@ -51,6 +53,7 @@ export async function generarFeedbackNutricional(
           preferenciaNutricional?: string;
           restricciones?: string[];
         };
+        ingredientes?: IngredienteGuardado[];
       },
       FeedbackNutricional
     >(functions, "generarFeedbackNutricional");
@@ -60,6 +63,7 @@ export async function generarFeedbackNutricional(
       datosComida,
       tipoComida,
       perfilNutricional: perfilParaEnviar,
+      ingredientes,
     });
 
     return result.data;

@@ -6,6 +6,7 @@ import { MetaFitColors } from "@/constants/theme";
 import { guardarComidaComoPlantilla, guardarComidaEnDiario, type IngredienteGuardado } from "@/utils/comidas";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
@@ -29,6 +30,7 @@ export default function ReagregarComidaPage() {
     grasa?: string;
     tipoComida?: string;
     ingredientesJson?: string;
+    imagenUrl?: string;
   }>();
 
   const ingredientesIniciales: IngredienteGuardado[] = (() => {
@@ -57,6 +59,7 @@ export default function ReagregarComidaPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [guardarComida, setGuardarComida] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
   const [tempFecha, setTempFecha] = useState<Date>(new Date());
@@ -116,18 +119,19 @@ export default function ReagregarComidaPage() {
     setIsSaving(true);
     try {
       let registroComidaId: string;
+      const imagenUrlExistente = params.imagenUrl || undefined;
       if (guardarComida) {
         const comidaId = await guardarComidaComoPlantilla(datosFinales);
         registroComidaId = await guardarComidaEnDiario(
           datosFinales, tipoComida, comidaId, undefined,
           tieneIngredientes ? ingredientesIniciales : undefined,
-          fechaSeleccionada
+          fechaSeleccionada, imagenUrlExistente
         );
       } else {
         registroComidaId = await guardarComidaEnDiario(
           datosFinales, tipoComida, undefined, undefined,
           tieneIngredientes ? ingredientesIniciales : undefined,
-          fechaSeleccionada
+          fechaSeleccionada, imagenUrlExistente
         );
       }
 
@@ -143,6 +147,7 @@ export default function ReagregarComidaPage() {
           grasa: datosFinales.grasa || "",
           tipoComida: tipoComida || "",
           registroComidaId: registroComidaId || "",
+          ingredientesJson: tieneIngredientes ? JSON.stringify(ingredientesIniciales) : "",
         },
       });
     } catch (error: any) {
@@ -224,6 +229,17 @@ export default function ReagregarComidaPage() {
         {tieneIngredientes ? (
           /* ── Vista desglose por ingredientes ── */
           <>
+            {params.imagenUrl && (
+              <Image
+                source={{ uri: params.imagenUrl }}
+                style={[styles.heroImage, !imageLoaded && { height: 0, marginBottom: 0 }]}
+                contentFit="cover"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(false)}
+                transition={300}
+              />
+            )}
+
             <View style={styles.titleCard}>
               <TextInput
                 style={styles.tituloInput}
@@ -293,6 +309,17 @@ export default function ReagregarComidaPage() {
         ) : (
           /* ── Vista estándar ── */
           <>
+            {params.imagenUrl && (
+              <Image
+                source={{ uri: params.imagenUrl }}
+                style={[styles.heroImage, !imageLoaded && { height: 0, marginBottom: 0 }]}
+                contentFit="cover"
+                onLoad={() => setImageLoaded(true)}
+                onError={() => setImageLoaded(false)}
+                transition={300}
+              />
+            )}
+
             <DetallesComidaCard datos={datosComida} onDatosChange={setDatosComida} onCalcularConIA={handleCalcularConIA} />
 
             <View style={styles.separadorRow}>
@@ -389,6 +416,7 @@ const styles = StyleSheet.create({
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: MetaFitColors.border.light, marginRight: 12, justifyContent: "center", alignItems: "center", backgroundColor: MetaFitColors.background.card },
   checkboxChecked: { width: "100%", height: "100%", borderRadius: 4, backgroundColor: MetaFitColors.button.primary, justifyContent: "center", alignItems: "center" },
   checkboxLabel: { fontSize: 15, fontWeight: "500" },
+  heroImage: { width: "100%", height: 200, borderRadius: 18, marginBottom: 16, overflow: "hidden" },
   // Desglose ingredientes
   titleCard: { backgroundColor: MetaFitColors.background.card, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, marginBottom: 12, borderWidth: 1, borderColor: MetaFitColors.border.light },
   tituloInput: { fontSize: 16, fontWeight: "600", color: MetaFitColors.text.primary },

@@ -88,6 +88,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
         ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
           ? JSON.stringify(consumo.ingredientes)
           : "",
+        imagenUrl: consumo.imagenUrl || "",
       },
     });
   };

@@ -1,4 +1,5 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
+import type { IngredienteGuardado } from "@/utils/comidas";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
@@ -17,9 +18,10 @@ type FeedbackScreenProps = {
   datosComida?: DatosComida;
   tipoComida?: string;
   registroComidaId?: string;
+  ingredientes?: IngredienteGuardado[];
 };
 
-export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId }: FeedbackScreenProps) {
+export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId, ingredientes }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
   const [calificacion, setCalificacion] = useState<"Muy saludable" | "Equilibrada" | "Poco nutritiva" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -36,7 +38,7 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
       try {
         setIsLoading(true);
         setError(null);
-        const feedback = await generarFeedbackNutricional(datosComida, tipoComida);
+        const feedback = await generarFeedbackNutricional(datosComida, tipoComida, ingredientes);
         setFeedbackText(feedback.texto);
         setCalificacion(feedback.calificacion);
       } catch (err: any) {

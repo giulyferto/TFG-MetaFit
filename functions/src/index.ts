@@ -37,10 +37,21 @@ interface PerfilNutricional {
   restricciones?: string[];
 }
 
+interface IngredienteFeedback {
+  nombre: string;
+  peso: string;
+  energiaPor100g: number;
+  carbPor100g: number;
+  proteinaPor100g: number;
+  fibraPor100g: number;
+  grasaPor100g: number;
+}
+
 interface FeedbackRequest {
   datosComida: DatosComida;
   tipoComida?: string;
   perfilNutricional?: PerfilNutricional;
+  ingredientes?: IngredienteFeedback[];
 }
 
 interface FeedbackResponse {
@@ -102,7 +113,7 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
   },
   async (request) => {
     try {
-      const {datosComida, tipoComida, perfilNutricional} = request.data;
+      const {datosComida, tipoComida, perfilNutricional, ingredientes} = request.data;
 
       if (!datosComida) {
         throw new Error("Datos de comida requeridos");
@@ -114,7 +125,7 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
       });
 
       // Construir el prompt
-      const prompt = construirPrompt(datosComida, tipoComida, perfilNutricional);
+      const prompt = construirPrompt(datosComida, tipoComida, perfilNutricional, ingredientes);
 
       // Llamar a la API de OpenAI
       const completion = await openai.chat.completions.create({
@@ -126,7 +137,9 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
               "Eres un nutricionista experto que proporciona feedback nutricional personalizado. " +
               "Tu respuesta debe ser BREVE, clara y concisa (máximo 150 palabras). " +
               "Usa formato markdown con **texto en negrita** solo para los títulos de sección. " +
-              "Responde siempre en español y asegúrate de incluir la calificación al final.",
+              "Responde siempre en español y asegúrate de incluir la calificación al final. " +
+              "IMPORTANTE: Si se lista el desglose de ingredientes, analiza ÚNICAMENTE en base a esos ingredientes exactos. " +
+              "No asumas ni inferras ingredientes que no estén explícitamente listados.",
           },
           {
             role: "user",
@@ -168,7 +181,8 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
 function construirPrompt(
   datosComida: DatosComida,
   tipoComida?: string,
-  perfilNutricional?: PerfilNutricional
+  perfilNutricional?: PerfilNutricional,
+  ingredientes?: IngredienteFeedback[]
 ): string {
   let prompt = `Analiza esta comida y proporciona feedback nutricional:\n\n`;
   prompt += `**Información nutricional:**\n`;
@@ -182,6 +196,16 @@ function construirPrompt(
   prompt += `- Proteínas: ${datosComida.proteina || "0"} gr\n`;
   prompt += `- Fibra: ${datosComida.fibra || "0"} gr\n`;
   prompt += `- Grasa: ${datosComida.grasa || "0"} gr\n\n`;
+
+  if (ingredientes && ingredientes.length > 0) {
+    prompt += `**Composición exacta del plato (analiza SOLO estos ingredientes, no hay otros):**\n`;
+    for (const ing of ingredientes) {
+      const peso = parseFloat(ing.peso) || 0;
+      const energia = Math.round(ing.energiaPor100g * peso / 100);
+      prompt += `- ${ing.nombre}: ${ing.peso} gr, ${energia} Kcal\n`;
+    }
+    prompt += `\n`;
+  }
 
   if (perfilNutricional) {
     prompt += `**Perfil del usuario:**\n`;

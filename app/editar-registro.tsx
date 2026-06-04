@@ -115,6 +115,7 @@ export default function EditarRegistroPage() {
           grasa: datosFinales.grasa || "",
           tipoComida: tipoComida || "",
           registroComidaId: params.registroId || "",
+          ingredientesJson: tieneIngredientes ? JSON.stringify(ingredientesIniciales) : "",
         },
       });
     } catch (error: any) {

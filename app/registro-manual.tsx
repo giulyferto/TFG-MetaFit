@@ -37,7 +37,7 @@ export default function RegistroManualPage() {
     }
   }
 
-  const handleAgregarAlDiario = (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => {
+  const handleAgregarAlDiario = (datosComida: DatosComida, tipoComida: string, registroComidaId: string, ings?: IngredienteGuardado[]) => {
     router.push({
       pathname: '/feedback',
       params: {
@@ -50,6 +50,7 @@ export default function RegistroManualPage() {
         grasa: datosComida.grasa || '',
         tipoComida: tipoComida || '',
         registroComidaId: registroComidaId || '',
+        ingredientesJson: ings && ings.length > 0 ? JSON.stringify(ings) : '',
       },
     });
   };

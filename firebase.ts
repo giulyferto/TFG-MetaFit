@@ -1,10 +1,18 @@
 // Import the functions you need from the SDKs you need
 import { Analytics, getAnalytics, isSupported } from "firebase/analytics";
 import { FirebaseApp, getApps, initializeApp } from "firebase/app";
-import { Auth, getAuth } from "firebase/auth";
+import { Auth, initializeAuth, Persistence } from "firebase/auth";
 import { Firestore, getFirestore } from "firebase/firestore";
 import { Functions, getFunctions } from "firebase/functions";
 import { FirebaseStorage, getStorage } from "firebase/storage";
+import ReactNativeAsyncStorage from "@react-native-async-storage/async-storage";
+
+// Metro resolves @firebase/auth to the React Native entrypoint at runtime,
+// which exports getReactNativePersistence. TypeScript resolves browser types
+// so we cast manually.
+const { getReactNativePersistence } = require("@firebase/auth") as {
+  getReactNativePersistence: (storage: typeof ReactNativeAsyncStorage) => Persistence;
+};
 
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -28,7 +36,9 @@ if (getApps().length === 0) {
 }
 
 // Initialize Firebase services
-export const auth: Auth = getAuth(app);
+export const auth: Auth = initializeAuth(app, {
+  persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+});
 export const db: Firestore = getFirestore(app);
 export const functions: Functions = getFunctions(app);
 export const storage: FirebaseStorage = getStorage(app);
