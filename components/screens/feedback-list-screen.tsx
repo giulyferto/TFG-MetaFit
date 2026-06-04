@@ -105,6 +105,22 @@ export function FeedbackListScreen() {
     });
   };
 
+  const handleReagregar = (consumo: Consumo) => {
+    router.push({
+      pathname: "/reagregar-comida",
+      params: {
+        nombre: consumo.nombre || "",
+        cantidad: consumo.cantidad || "",
+        energia: consumo.energia || "",
+        carb: consumo.carb || "",
+        proteina: consumo.proteina || "",
+        fibra: consumo.fibra || "",
+        grasa: consumo.grasa || "",
+        tipoComida: consumo.tipoComida || "",
+      },
+    });
+  };
+
   const handleEliminar = async (id: string) => {
     try {
       await eliminarRegistroComida(id);
@@ -302,6 +318,7 @@ export function FeedbackListScreen() {
             isLoading={isLoading}
             onEditar={handleEditar}
             onEliminar={handleEliminar}
+            onReagregar={handleReagregar}
           />
         </View>
       </ScrollView>

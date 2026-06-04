@@ -23,6 +23,9 @@ import {
   View,
 } from "react-native";
 
+type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
+const TIPOS_COMIDA: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
+
 let _idCounter = 0;
 function nextId() {
   return String(++_idCounter);
@@ -33,6 +36,8 @@ export default function IngredientesScreen() {
     ingredientesJson: string;
     nombre: string;
     imagenUri?: string;
+    desdeManual?: string;
+    tipoComida?: string;
   }>();
 
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(() => {
@@ -44,10 +49,15 @@ export default function IngredientesScreen() {
     }
   });
 
+  const [nombrePlato, setNombrePlato] = useState(params.nombre || "");
+  const [tipoComida, setTipoComida] = useState<TipoComida | null>(
+    TIPOS_COMIDA.includes(params.tipoComida as TipoComida) ? (params.tipoComida as TipoComida) : null
+  );
+
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoPeso, setNuevoPeso] = useState("");
   const [isAgregando, setIsAgregando] = useState(false);
-  const [mostrarFormAgregar, setMostrarFormAgregar] = useState(false);
+  const [mostrarFormAgregar, setMostrarFormAgregar] = useState(params.desdeManual === "true");
   const nuevoNombreRef = useRef<TextInput>(null);
 
   const totales = calcularTotales(ingredientes);
@@ -108,10 +118,10 @@ export default function IngredientesScreen() {
 
     const pesoTotal = ingredientes.reduce((s, i) => s + (parseFloat(i.peso) || 0), 0);
 
-    router.push({
-      pathname: "/registro-manual",
+    const destino = {
+      pathname: "/registro-manual" as const,
       params: {
-        nombre: params.nombre || "",
+        nombre: nombrePlato || "",
         cantidad: String(Math.round(pesoTotal)),
         energia: String(totales.energia),
         carb: String(totales.carb),
@@ -120,6 +130,7 @@ export default function IngredientesScreen() {
         grasa: String(totales.grasa),
         desdeIA: "true",
         imagenUri: params.imagenUri || "",
+        tipoComida: tipoComida || "",
         ingredientesJson: JSON.stringify(
           ingredientes.map((ing) => ({
             nombre: ing.nombre,
@@ -132,7 +143,14 @@ export default function IngredientesScreen() {
           }))
         ),
       },
-    });
+    };
+
+    // Cuando viene del registro manual, reemplazar la pantalla para no apilar dos veces
+    if (params.desdeManual === "true") {
+      router.replace(destino);
+    } else {
+      router.push(destino);
+    }
   };
 
   return (
@@ -143,11 +161,8 @@ export default function IngredientesScreen() {
           <IconSymbol name="chevron.left" size={20} color={MetaFitColors.text.secondary} />
         </TouchableOpacity>
         <View style={styles.headerText}>
-          <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary} numberOfLines={1}>
-            {params.nombre || "Desglose de ingredientes"}
-          </ThemedText>
-          <ThemedText style={styles.headerSubtitle} lightColor={MetaFitColors.text.secondary}>
-            Edita el peso de cada ingrediente
+          <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
+            Desglose de ingredientes
           </ThemedText>
         </View>
       </View>
@@ -163,6 +178,38 @@ export default function IngredientesScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Nombre del plato */}
+          <View style={styles.metaCard}>
+            <TextInput
+              style={styles.nombreInput}
+              value={nombrePlato}
+              onChangeText={setNombrePlato}
+              placeholder="Nombre del plato..."
+              placeholderTextColor={MetaFitColors.text.tertiary}
+              autoCapitalize="sentences"
+              returnKeyType="done"
+            />
+          </View>
+
+          {/* Tipo de comida */}
+          <View style={styles.tipoComidaContainer}>
+            {TIPOS_COMIDA.map((tipo) => (
+              <TouchableOpacity
+                key={tipo}
+                style={[styles.tipoButton, tipoComida === tipo && styles.tipoButtonActive]}
+                onPress={() => setTipoComida(tipo)}
+                activeOpacity={0.75}
+              >
+                <ThemedText
+                  style={[styles.tipoText, tipoComida === tipo && styles.tipoTextActive]}
+                  lightColor={tipoComida === tipo ? MetaFitColors.button.primary : MetaFitColors.text.secondary}
+                >
+                  {tipo}
+                </ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           {/* Totals card */}
           <View style={styles.totalesCard}>
             <ThemedText style={styles.totalesLabel} lightColor={MetaFitColors.text.secondary}>
@@ -359,6 +406,7 @@ export default function IngredientesScreen() {
               </ThemedText>
             </TouchableOpacity>
           )}
+
         </ScrollView>
 
         {/* Continue button */}
@@ -400,6 +448,55 @@ const styles = StyleSheet.create({
   keyboardView: { flex: 1 },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 120 },
+
+  // Meta card (nombre + foto)
+  metaCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 12,
+    gap: 10,
+  },
+  nombreInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600",
+    color: MetaFitColors.text.primary,
+    paddingVertical: 4,
+  },
+  // Tipo de comida
+  tipoComidaContainer: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+    flexWrap: "wrap",
+  },
+  tipoButton: {
+    paddingVertical: 7,
+    paddingHorizontal: 13,
+    borderRadius: 20,
+    backgroundColor: MetaFitColors.background.card,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    minWidth: 72,
+    alignItems: "center",
+  },
+  tipoButtonActive: {
+    backgroundColor: MetaFitColors.background.elevated,
+    borderColor: MetaFitColors.button.primary,
+  },
+  tipoText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  tipoTextActive: {
+    color: MetaFitColors.button.primary,
+  },
 
   // Totals
   totalesCard: {

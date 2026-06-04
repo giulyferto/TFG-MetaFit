@@ -1,5 +1,4 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
@@ -102,17 +101,9 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <IconSymbol
-            name="chevron.left"
-            size={20}
-            color={MetaFitColors.text.secondary}
-          />
-        </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
           Análisis nutricional
         </ThemedText>
-        <View style={styles.headerSpacer} />
       </View>
 
       <ScrollView
@@ -189,7 +180,7 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
             activeOpacity={0.85}
           >
             <ThemedText style={styles.guardarButtonText} lightColor={MetaFitColors.text.white}>
-              Guardar análisis
+              Aceptar
             </ThemedText>
           </TouchableOpacity>
         )}
@@ -204,28 +195,14 @@ const styles = StyleSheet.create({
     backgroundColor: MetaFitColors.background.white,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: MetaFitColors.background.card,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 12,
-  },
   headerTitle: {
     fontSize: 18,
     fontWeight: "600",
-    flex: 1,
-  },
-  headerSpacer: {
-    width: 48,
   },
   scrollView: {
     flex: 1,

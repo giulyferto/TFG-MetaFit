@@ -1,6 +1,7 @@
 import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
 import { FeedbackScreen } from '@/components/screens/feedback-screen';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Stack } from 'expo-router';
 
 export default function FeedbackPage() {
   const params = useLocalSearchParams<{
@@ -33,6 +34,11 @@ export default function FeedbackPage() {
     router.replace('/(tabs)');
   };
 
-  return <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} tipoComida={params.tipoComida} registroComidaId={params.registroComidaId} />;
+  return (
+    <>
+      <Stack.Screen options={{ gestureEnabled: false, headerShown: false }} />
+      <FeedbackScreen onGuardarPress={handleGuardarPress} datosComida={datosComida} tipoComida={params.tipoComida} registroComidaId={params.registroComidaId} />
+    </>
+  );
 }
 

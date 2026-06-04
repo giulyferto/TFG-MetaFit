@@ -1,7 +1,9 @@
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import { esNumeroValido } from "@/utils/validation";
-import { StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { ActivityIndicator, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
 export type DatosComida = {
   nombre: string;
@@ -17,13 +19,27 @@ type DetallesComidaCardProps = {
   datos: DatosComida;
   onDatosChange: (datos: DatosComida) => void;
   onEliminar?: () => void;
+  onCalcularConIA?: () => Promise<void>;
 };
 
 export function DetallesComidaCard({
   datos,
   onDatosChange,
   onEliminar,
+  onCalcularConIA,
 }: DetallesComidaCardProps) {
+  const [isCalculando, setIsCalculando] = useState(false);
+
+  const handleCalcularConIA = async () => {
+    if (!onCalcularConIA) return;
+    setIsCalculando(true);
+    try {
+      await onCalcularConIA();
+    } finally {
+      setIsCalculando(false);
+    }
+  };
+
   const actualizarCampo = (campo: keyof DatosComida, valor: string) => {
     onDatosChange({ ...datos, [campo]: valor });
   };
@@ -58,6 +74,28 @@ export function DetallesComidaCard({
           onChangeText={(valor) => actualizarCampo("nombre", valor)}
         />
       </View>
+
+      {/* Botón calcular con IA */}
+      {onCalcularConIA && (
+        <TouchableOpacity
+          style={[
+            styles.iaButton,
+            (!datos.nombre.trim() || isCalculando) && styles.iaButtonDisabled,
+          ]}
+          onPress={handleCalcularConIA}
+          disabled={!datos.nombre.trim() || isCalculando}
+          activeOpacity={0.75}
+        >
+          {isCalculando ? (
+            <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
+          ) : (
+            <IconSymbol name="sparkles" size={14} color={MetaFitColors.button.primary} />
+          )}
+          <ThemedText style={styles.iaButtonText} lightColor={MetaFitColors.button.primary}>
+            {isCalculando ? "Calculando..." : "Calcular con IA"}
+          </ThemedText>
+        </TouchableOpacity>
+      )}
 
       {/* Tabla nutricional */}
       <View style={styles.tablaNutricional}>
@@ -216,6 +254,28 @@ const styles = StyleSheet.create({
     flex: 1,
     color: MetaFitColors.text.primary,
     paddingVertical: 4,
+  },
+  iaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+    alignSelf: "flex-start",
+  },
+  iaButtonDisabled: {
+    opacity: 0.4,
+  },
+  iaButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
   },
   tablaNutricional: {
     marginTop: 8,

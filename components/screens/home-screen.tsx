@@ -6,7 +6,7 @@ import { obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, 
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HomeScreenProps = {
@@ -57,9 +57,12 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
   const consumosAlta = todosLosConsumos.filter(c => c.calificacion === "Alta").length;
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 59 : 24) + 16 }]} lightColor={MetaFitColors.background.white}>
-      {/* Fixed top: header + stats + button */}
-      <View style={styles.topSection}>
+    <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 59 : 24) + 16 }]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerSection}>
           <Image
             source={require("@/assets/images/MetaFitLogo.png")}
@@ -166,10 +169,8 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
             </ThemedText>
           </View>
         </TouchableOpacity>
-      </View>
 
-      {/* Consumos section: takes remaining space, pagination always visible */}
-      <View style={styles.consumosSection}>
+        {/* Consumos section */}
         <View style={styles.sectionHeader}>
           <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.primary}>
             Últimos consumos
@@ -183,8 +184,8 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
           )}
         </View>
 
-        <TablaConsumos consumos={todosLosConsumos} isLoading={isLoading} itemsPerPage={3} />
-      </View>
+        <TablaConsumos consumos={todosLosConsumos} isLoading={isLoading} itemsPerPage={5} />
+      </ScrollView>
     </ThemedView>
   );
 }
@@ -193,11 +194,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: MetaFitColors.background.white,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
   },
-  topSection: {
-    gap: 0,
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 110,
   },
   headerSection: {
     flexDirection: "row",
@@ -285,9 +288,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     letterSpacing: 0.2,
-  },
-  consumosSection: {
-    flex: 1,
   },
   sectionHeader: {
     flexDirection: "row",

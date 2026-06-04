@@ -3,7 +3,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { actualizarRegistroComida } from "@/utils/consumos";
+import { guardarComidaEnDiario } from "@/utils/comidas";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -12,9 +12,8 @@ import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, Vie
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 const TIPOS_COMIDA: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
 
-export default function EditarRegistroPage() {
+export default function ReagregarComidaPage() {
   const params = useLocalSearchParams<{
-    registroId: string;
     nombre?: string;
     cantidad?: string;
     energia?: string;
@@ -69,7 +68,11 @@ export default function EditarRegistroPage() {
     }
   };
 
-  const handleGuardar = async () => {
+  const handleAgregar = async () => {
+    if (!tipoComida) {
+      Alert.alert("Error", "Por favor selecciona un tipo de comida");
+      return;
+    }
     if (!datosComida.nombre.trim()) {
       Alert.alert("Error", "Por favor ingresa el nombre de la comida");
       return;
@@ -77,11 +80,21 @@ export default function EditarRegistroPage() {
 
     setIsSaving(true);
     try {
-      await actualizarRegistroComida(params.registroId, {
-        ...datosComida,
-        tipoComida: tipoComida || undefined,
+      const registroComidaId = await guardarComidaEnDiario(datosComida, tipoComida);
+      router.push({
+        pathname: "/feedback",
+        params: {
+          nombre: datosComida.nombre || "",
+          cantidad: datosComida.cantidad || "",
+          energia: datosComida.energia || "",
+          carb: datosComida.carb || "",
+          proteina: datosComida.proteina || "",
+          fibra: datosComida.fibra || "",
+          grasa: datosComida.grasa || "",
+          tipoComida: tipoComida || "",
+          registroComidaId: registroComidaId || "",
+        },
       });
-      router.back();
     } catch (error: any) {
       Alert.alert("Error", `No se pudo guardar: ${error.message || "Error desconocido"}`);
     } finally {
@@ -96,7 +109,7 @@ export default function EditarRegistroPage() {
           <IconSymbol name="chevron.left" size={20} color={MetaFitColors.text.secondary} />
         </TouchableOpacity>
         <ThemedText style={styles.headerTitle} lightColor={MetaFitColors.text.primary}>
-          Editar registro
+          Agregar de nuevo
         </ThemedText>
         <View style={styles.headerSpacer} />
       </View>
@@ -139,15 +152,15 @@ export default function EditarRegistroPage() {
         />
 
         <TouchableOpacity
-          style={[styles.guardarButton, isSaving && styles.guardarButtonDisabled]}
-          onPress={handleGuardar}
+          style={[styles.agregarButton, isSaving && styles.agregarButtonDisabled]}
+          onPress={handleAgregar}
           disabled={isSaving}
         >
           {isSaving ? (
             <ActivityIndicator size="small" color={MetaFitColors.text.white} />
           ) : (
-            <ThemedText style={styles.guardarButtonText} lightColor={MetaFitColors.text.white}>
-              Guardar cambios
+            <ThemedText style={styles.agregarButtonText} lightColor={MetaFitColors.text.white}>
+              Agregar al diario
             </ThemedText>
           )}
         </TouchableOpacity>
@@ -225,7 +238,7 @@ const styles = StyleSheet.create({
   tipoComidaTextActive: {
     color: MetaFitColors.button.primary,
   },
-  guardarButton: {
+  agregarButton: {
     backgroundColor: MetaFitColors.button.primary,
     paddingVertical: 18,
     borderRadius: 16,
@@ -237,10 +250,10 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  guardarButtonDisabled: {
+  agregarButtonDisabled: {
     opacity: 0.5,
   },
-  guardarButtonText: {
+  agregarButtonText: {
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.2,

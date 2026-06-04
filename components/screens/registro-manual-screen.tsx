@@ -5,6 +5,8 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior, type IngredienteGuardado } from "@/utils/comidas";
+import { seleccionarImagen } from "@/utils/image";
+import { obtenerNutricionIngrediente } from "@/utils/openai";
 import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
@@ -15,6 +17,7 @@ type RegistroManualScreenProps = {
   datosIniciales?: DatosComida;
   imagenUri?: string;
   ingredientes?: IngredienteGuardado[];
+  tipoComidaInicial?: string;
   onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string) => void;
   onCancelarPress?: () => void;
 };
@@ -23,11 +26,14 @@ export function RegistroManualScreen({
   datosIniciales,
   imagenUri,
   ingredientes,
+  tipoComidaInicial,
   onAgregarAlDiarioPress,
   onCancelarPress,
 }: RegistroManualScreenProps) {
-  const [tipoComidaSeleccionado, setTipoComidaSeleccionado] =
-    useState<TipoComida | null>(null);
+  const tiposComida: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
+  const [tipoComidaSeleccionado, setTipoComidaSeleccionado] = useState<TipoComida | null>(
+    tiposComida.includes(tipoComidaInicial as TipoComida) ? (tipoComidaInicial as TipoComida) : null
+  );
   const [comidasSeleccionadas, setComidasSeleccionadas] = useState<string[]>([]);
   const [comidaSeleccionadaId, setComidaSeleccionadaId] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -45,7 +51,14 @@ export function RegistroManualScreen({
     }
   );
 
-  const tiposComida: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
+  const [localFotoUri, setLocalFotoUri] = useState<string | null>(null);
+
+  const handleAgregarFoto = async () => {
+    await seleccionarImagen(
+      async (asset) => { setLocalFotoUri(asset.uri); },
+      { title: "Foto del plato", message: "¿Cómo quieres agregar la foto?", allowsEditing: true, aspect: [4, 3] }
+    );
+  };
 
   // When ingredients are present, allow editing just the title
   const [nombreEditable, setNombreEditable] = useState(datosIniciales?.nombre || "");
@@ -84,6 +97,32 @@ export function RegistroManualScreen({
     }
   };
 
+  const handleCalcularConIA = async () => {
+    const nombre = datosComida.nombre?.trim();
+    if (!nombre) {
+      Alert.alert("Error", "Por favor ingresa el nombre de la comida antes de calcular");
+      return;
+    }
+    const gramos = parseFloat(datosComida.cantidad || "0");
+    if (!gramos || gramos <= 0) {
+      Alert.alert("Error", "Por favor ingresa la cantidad en gramos antes de calcular");
+      return;
+    }
+    try {
+      const nutricion = await obtenerNutricionIngrediente(nombre);
+      setDatosComida((prev) => ({
+        ...prev,
+        energia: String(Math.round(nutricion.energiaPor100g * gramos / 100)),
+        carb: String(Math.round(nutricion.carbPor100g * gramos / 100 * 10) / 10),
+        proteina: String(Math.round(nutricion.proteinaPor100g * gramos / 100 * 10) / 10),
+        fibra: String(Math.round(nutricion.fibraPor100g * gramos / 100 * 10) / 10),
+        grasa: String(Math.round(nutricion.grasaPor100g * gramos / 100 * 10) / 10),
+      }));
+    } catch (error: any) {
+      Alert.alert("Error", `No se pudieron calcular los valores: ${error.message || "Error desconocido"}`);
+    }
+  };
+
   const handleAgregarAlDiario = async () => {
     if (!tipoComidaSeleccionado) {
       Alert.alert("Error", "Por favor selecciona un tipo de comida");
@@ -115,13 +154,14 @@ export function RegistroManualScreen({
     try {
       let registroComidaId: string;
       
+      const fotoFinal = localFotoUri || imagenUri;
       if (comidaSeleccionadaId) {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, imagenUri, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, fotoFinal, ingredientes);
       } else if (guardarComida) {
         const comidaId = await guardarComidaComoPlantilla(datosParaGuardar);
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, imagenUri, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, fotoFinal, ingredientes);
       } else {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, imagenUri, ingredientes);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes);
       }
 
       if (onAgregarAlDiarioPress) {
@@ -215,9 +255,9 @@ export function RegistroManualScreen({
         {ingredientes && ingredientes.length > 0 ? (
           <>
             {/* Food photo hero */}
-            {imagenUri && (
+            {(localFotoUri || imagenUri) && (
               <Image
-                source={{ uri: imagenUri }}
+                source={{ uri: localFotoUri || imagenUri }}
                 style={styles.heroImage}
                 resizeMode="cover"
               />
@@ -312,6 +352,35 @@ export function RegistroManualScreen({
                 );
               })}
             </View>
+
+            {/* Foto opcional */}
+            <View style={styles.fotoSection}>
+              {localFotoUri ? (
+                <View style={styles.fotoPreviewRow}>
+                  <Image source={{ uri: localFotoUri }} style={styles.fotoPreview} resizeMode="cover" />
+                  <View style={styles.fotoPreviewInfo}>
+                    <ThemedText style={styles.fotoPreviewLabel} lightColor={MetaFitColors.text.secondary}>
+                      Foto adjunta
+                    </ThemedText>
+                    <TouchableOpacity onPress={() => setLocalFotoUri(null)} activeOpacity={0.7}>
+                      <ThemedText style={styles.fotoQuitarText} lightColor={MetaFitColors.calificacion.baja}>
+                        Quitar foto
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                  <TouchableOpacity onPress={handleAgregarFoto} style={styles.fotoCambiarBtn} activeOpacity={0.7}>
+                    <IconSymbol name="pencil" size={14} color={MetaFitColors.button.primary} />
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity style={styles.fotoAgregarBtn} onPress={handleAgregarFoto} activeOpacity={0.75}>
+                  <IconSymbol name="camera" size={16} color={MetaFitColors.text.secondary} />
+                  <ThemedText style={styles.fotoAgregarText} lightColor={MetaFitColors.text.secondary}>
+                    Agregar foto (opcional)
+                  </ThemedText>
+                </TouchableOpacity>
+              )}
+            </View>
           </>
         ) : (
           <>
@@ -335,7 +404,37 @@ export function RegistroManualScreen({
                 <DetallesComidaCard
                   datos={datosComida}
                   onDatosChange={setDatosComida}
+                  onCalcularConIA={handleCalcularConIA}
                 />
+
+                {/* Separador "o" */}
+                <View style={styles.separadorRow}>
+                  <View style={styles.separadorLinea} />
+                  <ThemedText style={styles.separadorTexto} lightColor={MetaFitColors.text.tertiary}>o</ThemedText>
+                  <View style={styles.separadorLinea} />
+                </View>
+
+                {/* Botón desglosar por ingredientes */}
+                <TouchableOpacity
+                  style={styles.ingredientesButton}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/ingredientes",
+                      params: {
+                        nombre: datosComida.nombre || "",
+                        ingredientesJson: "[]",
+                        desdeManual: "true",
+                        tipoComida: tipoComidaSeleccionado || "",
+                      },
+                    })
+                  }
+                  activeOpacity={0.75}
+                >
+                  <IconSymbol name="list.bullet" size={16} color={MetaFitColors.button.primary} />
+                  <ThemedText style={styles.ingredientesButtonText} lightColor={MetaFitColors.button.primary}>
+                    Desglosar por ingredientes
+                  </ThemedText>
+                </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.checkboxContainer}
@@ -356,6 +455,37 @@ export function RegistroManualScreen({
               </>
             )}
           </>
+        )}
+
+        {/* Foto opcional (solo modo estándar) */}
+        {(!ingredientes || ingredientes.length === 0) && (
+          <View style={styles.fotoSection}>
+            {localFotoUri ? (
+              <View style={styles.fotoPreviewRow}>
+                <Image source={{ uri: localFotoUri }} style={styles.fotoPreview} resizeMode="cover" />
+                <View style={styles.fotoPreviewInfo}>
+                  <ThemedText style={styles.fotoPreviewLabel} lightColor={MetaFitColors.text.secondary}>
+                    Foto adjunta
+                  </ThemedText>
+                  <TouchableOpacity onPress={() => setLocalFotoUri(null)} activeOpacity={0.7}>
+                    <ThemedText style={styles.fotoQuitarText} lightColor={MetaFitColors.calificacion.baja}>
+                      Quitar foto
+                    </ThemedText>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={handleAgregarFoto} style={styles.fotoCambiarBtn} activeOpacity={0.7}>
+                  <IconSymbol name="pencil" size={14} color={MetaFitColors.button.primary} />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.fotoAgregarBtn} onPress={handleAgregarFoto} activeOpacity={0.75}>
+                <IconSymbol name="camera" size={16} color={MetaFitColors.text.secondary} />
+                <ThemedText style={styles.fotoAgregarText} lightColor={MetaFitColors.text.secondary}>
+                  Agregar foto (opcional)
+                </ThemedText>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
 
         {/* Botones de acción */}
@@ -483,6 +613,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  separadorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 12,
+  },
+  separadorLinea: {
+    flex: 1,
+    height: 1,
+    backgroundColor: MetaFitColors.border.light,
+  },
+  separadorTexto: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  ingredientesButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+    borderStyle: "dashed",
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  ingredientesButtonText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
   checkboxContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -600,6 +762,7 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: "800",
     letterSpacing: -1,
+    lineHeight: 50,
   },
   macroChipsRow: {
     flexDirection: "row",
@@ -683,6 +846,62 @@ const styles = StyleSheet.create({
   ingRowQty: {
     fontSize: 13,
     fontWeight: "500",
+  },
+
+  // Foto opcional
+  fotoSection: {
+    marginBottom: 16,
+  },
+  fotoAgregarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    borderStyle: "dashed",
+    backgroundColor: MetaFitColors.background.card,
+  },
+  fotoAgregarText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  fotoPreviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    padding: 10,
+  },
+  fotoPreview: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+  },
+  fotoPreviewInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  fotoPreviewLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  fotoQuitarText: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  fotoCambiarBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 

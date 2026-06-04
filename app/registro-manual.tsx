@@ -15,6 +15,7 @@ export default function RegistroManualPage() {
     desdeIA?: string;
     imagenUri?: string;
     ingredientesJson?: string;
+    tipoComida?: string;
   }>();
 
   const datosIniciales: DatosComida | undefined = params.desdeIA === 'true' ? {
@@ -62,6 +63,7 @@ export default function RegistroManualPage() {
       datosIniciales={datosIniciales}
       imagenUri={params.imagenUri || undefined}
       ingredientes={ingredientes}
+      tipoComidaInicial={params.tipoComida || undefined}
       onAgregarAlDiarioPress={handleAgregarAlDiario}
       onCancelarPress={handleCancelar}
     />
