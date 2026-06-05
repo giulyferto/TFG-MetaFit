@@ -4,6 +4,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { guardarComidaComoPlantilla, guardarComidaEnDiario, type IngredienteGuardado } from "@/utils/comidas";
+import { consumePendingImagenUrl, setPendingImagenUrl } from "@/utils/nav-state";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
@@ -30,8 +31,9 @@ export default function ReagregarComidaPage() {
     grasa?: string;
     tipoComida?: string;
     ingredientesJson?: string;
-    imagenUrl?: string;
   }>();
+
+  const [imagenUrl] = useState<string | null>(() => consumePendingImagenUrl());
 
   const ingredientesIniciales: IngredienteGuardado[] = (() => {
     if (!params.ingredientesJson) return [];
@@ -59,7 +61,7 @@ export default function ReagregarComidaPage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [guardarComida, setGuardarComida] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
   const [tempFecha, setTempFecha] = useState<Date>(new Date());
@@ -119,7 +121,7 @@ export default function ReagregarComidaPage() {
     setIsSaving(true);
     try {
       let registroComidaId: string;
-      const imagenUrlExistente = params.imagenUrl || undefined;
+      const imagenUrlExistente = imagenUrl || undefined;
       if (guardarComida) {
         const comidaId = await guardarComidaComoPlantilla(datosFinales);
         registroComidaId = await guardarComidaEnDiario(
@@ -135,6 +137,7 @@ export default function ReagregarComidaPage() {
         );
       }
 
+      setPendingImagenUrl(imagenUrlExistente || null);
       router.push({
         pathname: "/feedback",
         params: {
@@ -229,13 +232,12 @@ export default function ReagregarComidaPage() {
         {tieneIngredientes ? (
           /* ── Vista desglose por ingredientes ── */
           <>
-            {params.imagenUrl && (
+            {imagenUrl && !imageFailed && (
               <Image
-                source={{ uri: params.imagenUrl }}
-                style={[styles.heroImage, !imageLoaded && { height: 0, marginBottom: 0 }]}
+                source={{ uri: imagenUrl }}
+                style={styles.heroImage}
                 contentFit="cover"
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageLoaded(false)}
+                onError={() => setImageFailed(true)}
                 transition={300}
               />
             )}
@@ -309,13 +311,12 @@ export default function ReagregarComidaPage() {
         ) : (
           /* ── Vista estándar ── */
           <>
-            {params.imagenUrl && (
+            {imagenUrl && !imageFailed && (
               <Image
-                source={{ uri: params.imagenUrl }}
-                style={[styles.heroImage, !imageLoaded && { height: 0, marginBottom: 0 }]}
+                source={{ uri: imagenUrl }}
+                style={styles.heroImage}
                 contentFit="cover"
-                onLoad={() => setImageLoaded(true)}
-                onError={() => setImageLoaded(false)}
+                onError={() => setImageFailed(true)}
                 transition={300}
               />
             )}

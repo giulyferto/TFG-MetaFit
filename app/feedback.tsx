@@ -1,8 +1,10 @@
 import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
 import { FeedbackScreen } from '@/components/screens/feedback-screen';
 import type { IngredienteGuardado } from '@/utils/comidas';
+import { consumePendingImagenUrl } from '@/utils/nav-state';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
+import { useState } from 'react';
 
 export default function FeedbackPage() {
   const params = useLocalSearchParams<{
@@ -17,6 +19,8 @@ export default function FeedbackPage() {
     registroComidaId?: string;
     ingredientesJson?: string;
   }>();
+
+  const [imagenUrl] = useState<string | null>(() => consumePendingImagenUrl());
 
   const datosComida: DatosComida | undefined = params.nombre
     ? {
@@ -52,6 +56,7 @@ export default function FeedbackPage() {
         tipoComida={params.tipoComida}
         registroComidaId={params.registroComidaId}
         ingredientes={ingredientes}
+        imagenUrl={imagenUrl || undefined}
       />
     </>
   );

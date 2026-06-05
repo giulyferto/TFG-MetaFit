@@ -9,6 +9,7 @@ import {
   type Consumo,
   type ResumenNutricional,
 } from "@/utils/consumos";
+import { setPendingImagenUrl } from "@/utils/nav-state";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router, useFocusEffect } from "expo-router";
 
@@ -109,6 +110,7 @@ export function FeedbackListScreen() {
   };
 
   const handleReagregar = (consumo: Consumo) => {
+    setPendingImagenUrl(consumo.imagenUrl || null);
     router.push({
       pathname: "/reagregar-comida",
       params: {
@@ -123,7 +125,6 @@ export function FeedbackListScreen() {
         ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
           ? JSON.stringify(consumo.ingredientes)
           : "",
-        imagenUrl: consumo.imagenUrl || "",
       },
     });
   };

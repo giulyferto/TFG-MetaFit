@@ -3,6 +3,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { eliminarRegistroComida, obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, type ResumenNutricional } from "@/utils/consumos";
+import { setPendingImagenUrl } from "@/utils/nav-state";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -74,6 +75,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
   };
 
   const handleReagregar = (consumo: Consumo) => {
+    setPendingImagenUrl(consumo.imagenUrl || null);
     router.push({
       pathname: "/reagregar-comida",
       params: {
@@ -88,7 +90,6 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
         ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
           ? JSON.stringify(consumo.ingredientes)
           : "",
-        imagenUrl: consumo.imagenUrl || "",
       },
     });
   };

@@ -19,13 +19,15 @@ type FeedbackScreenProps = {
   tipoComida?: string;
   registroComidaId?: string;
   ingredientes?: IngredienteGuardado[];
+  imagenUrl?: string;
 };
 
-export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId, ingredientes }: FeedbackScreenProps) {
+export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, registroComidaId, ingredientes, imagenUrl }: FeedbackScreenProps) {
   const [feedbackText, setFeedbackText] = useState<string>("");
   const [calificacion, setCalificacion] = useState<"Muy saludable" | "Equilibrada" | "Poco nutritiva" | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [imgFailed, setImgFailed] = useState(false);
 
   useEffect(() => {
     const cargarFeedback = async () => {
@@ -141,9 +143,10 @@ export function FeedbackScreen({ onGuardarPress, datosComida, tipoComida, regist
           <View style={styles.imageGlowRing}>
             <View style={styles.imageContainer}>
               <Image
-                source={FeedbackFoodImage}
+                source={imagenUrl && !imgFailed ? { uri: imagenUrl } : FeedbackFoodImage}
                 style={styles.foodImage}
-                contentFit="contain"
+                contentFit={imagenUrl && !imgFailed ? "cover" : "contain"}
+                onError={() => setImgFailed(true)}
               />
             </View>
           </View>

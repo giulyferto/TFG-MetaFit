@@ -6,6 +6,7 @@ import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { guardarComidaComoPlantilla, guardarComidaEnDiario, type ComidaAnterior, type IngredienteGuardado } from "@/utils/comidas";
 import { seleccionarImagen } from "@/utils/image";
+import { setPendingImagenUrl } from "@/utils/nav-state";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
@@ -179,6 +180,8 @@ export function RegistroManualScreen({
       } else {
         registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes, fechaSeleccionada);
       }
+
+      setPendingImagenUrl(fotoFinal || null);
 
       if (onAgregarAlDiarioPress) {
         onAgregarAlDiarioPress(datosParaGuardar, tipoComidaSeleccionado, registroComidaId, ingredientes);
