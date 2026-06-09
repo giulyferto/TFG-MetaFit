@@ -1,4 +1,5 @@
 import * as FileSystem from 'expo-file-system';
+import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert, Platform } from 'react-native';
 
@@ -97,6 +98,32 @@ export async function requestImagePermissions(): Promise<boolean> {
     }
   }
   return true;
+}
+
+/**
+ * Convierte cualquier imagen (incluyendo HEIC/HEIF de iPhone) a base64 JPEG.
+ * Usar siempre antes de enviar imágenes a APIs que no soportan HEIC.
+ */
+export async function asegurarBase64Jpeg(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: 1600 } }],
+    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+  );
+  if (!result.base64) throw new Error('No se pudo convertir la imagen a JPEG');
+  return result.base64;
+}
+
+// Para códigos de barras: solo convierte formato sin redimensionar,
+// preservando la resolución completa para que el código sea legible.
+export async function asegurarBase64JpegBarras(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [],
+    { compress: 0.92, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+  );
+  if (!result.base64) throw new Error('No se pudo convertir la imagen a JPEG');
+  return result.base64;
 }
 
 /**

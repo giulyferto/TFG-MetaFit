@@ -9,7 +9,7 @@
 
 import * as logger from "firebase-functions/logger";
 import { defineSecret } from "firebase-functions/params";
-import { onCall } from "firebase-functions/v2/https";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
 import OpenAI from "openai";
 
 // Define the OpenAI API key as a secret
@@ -99,6 +99,7 @@ interface AnalizarCodigoBarrasRequest {
 
 interface AnalizarCodigoBarrasResponse {
   esCodigoBarras: boolean;
+  codigoLeido?: string;
   datosComida?: DatosComida;
   mensaje?: string;
 }
@@ -167,10 +168,9 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
 
       return feedback;
     } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Error al generar feedback nutricional", error);
-      throw new Error(
-        `Error al generar feedback: ${error.message || "Error desconocido"}`
-      );
+      throw new HttpsError("internal", `Error al generar feedback: ${error.message || "Error desconocido"}`);
     }
   }
 );
@@ -482,10 +482,9 @@ IMPORTANTE:
 
       return { esPlatoComida: true, datosComida };
     } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Error al analizar imagen", error);
-      throw new Error(
-        `Error al analizar la imagen: ${error.message || "Error desconocido"}`
-      );
+      throw new HttpsError("internal", `Error al analizar la imagen: ${error.message || "Error desconocido"}`);
     }
   }
 );
@@ -522,39 +521,43 @@ export const analizarCodigoBarras = onCall<AnalizarCodigoBarrasRequest>(
             content: [
               {
                 type: "text",
-                text: `Eres un experto en reconocimiento de códigos de barras y productos nutricionales. Analiza esta imagen y determina si contiene un código de barras de un producto alimenticio.
+                text: `Eres un experto en identificación de productos alimenticios a través de códigos de barras.
 
-INSTRUCCIONES:
-1. Si la imagen NO contiene un código de barras visible o no es un producto alimenticio, responde EXACTAMENTE con este JSON:
+PASO 1 - LECTURA DEL CÓDIGO:
+Lee y decodifica con precisión todos los dígitos del código de barras visible en la imagen. Los códigos EAN-13 tienen 13 dígitos y los UPC-A tienen 12.
+
+PASO 2 - IDENTIFICACIÓN DEL PRODUCTO:
+Usando el número exacto que leíste, identifica el producto alimenticio específico al que corresponde ese código de barras, basándote en tu conocimiento de bases de datos de productos (Open Food Facts, USDA, bases de datos de supermercados, etc.).
+
+PASO 3 - DATOS NUTRICIONALES:
+Devuelve la información nutricional real de ese producto específico según su etiqueta conocida. Los valores deben ser por porción indicada en el envase.
+
+Si la imagen NO contiene un código de barras claro y legible, responde EXACTAMENTE:
 {
   "esCodigoBarras": false,
-  "mensaje": "No se pudo reconocer un código de barras en la imagen"
+  "mensaje": "No se encontró un código de barras legible en la imagen"
 }
 
-2. Si la imagen SÍ contiene un código de barras de un producto alimenticio:
-   - Intenta leer el código de barras (si es visible)
-   - Identifica el producto alimenticio
-   - Extrae la información nutricional del producto (puedes inferirla basándote en el tipo de producto si no está visible)
-   - Responde EXACTAMENTE con este JSON:
+Si SÍ identificaste el producto por su código, responde EXACTAMENTE:
 {
   "esCodigoBarras": true,
+  "codigoLeido": "número exacto del código de barras leído",
   "datosComida": {
-    "nombre": "nombre del producto identificado",
-    "cantidad": "cantidad por porción en gramos (solo número, sin unidades)",
-    "energia": "energía en Kcal por porción (solo número, sin unidades)",
-    "carb": "carbohidratos en gramos por porción (solo número, sin unidades)",
-    "proteina": "proteínas en gramos por porción (solo número, sin unidades)",
-    "fibra": "fibra en gramos por porción (solo número, sin unidades)",
-    "grasa": "grasa en gramos por porción (solo número, sin unidades)"
+    "nombre": "nombre comercial exacto del producto",
+    "cantidad": "gramos por porción según la etiqueta (solo número)",
+    "energia": "kcal por porción (solo número)",
+    "carb": "carbohidratos en g por porción (solo número)",
+    "proteina": "proteínas en g por porción (solo número)",
+    "fibra": "fibra en g por porción (solo número)",
+    "grasa": "grasas en g por porción (solo número)"
   }
 }
 
-IMPORTANTE:
-- Responde ÚNICAMENTE con el JSON, sin texto adicional antes o después
-- Los valores numéricos deben ser números como strings (ej: "250", "450", "30")
-- Si no puedes determinar un valor específico, usa valores estimados razonables basados en el tipo de producto
-- El nombre debe ser descriptivo y claro del producto identificado
-- Si puedes leer el código de barras, úsalo para identificar mejor el producto`,
+REGLAS:
+- Responde ÚNICAMENTE con el JSON, sin texto adicional
+- Todos los valores numéricos son strings (ej: "250", "4.5", "12")
+- Si conocés el producto por el código pero no tenés sus macros exactos, estimálos razonablemente para ese producto específico
+- Si no podés leer el código con claridad suficiente, devuelve esCodigoBarras: false`,
               },
               {
                 type: "image_url",
@@ -614,7 +617,7 @@ IMPORTANTE:
       };
 
       logger.info("Código de barras analizado exitosamente", {
-        esCodigoBarras: true,
+        codigoLeido: resultado.codigoLeido || "no reportado",
         nombre: datosComida.nombre,
       });
 
@@ -623,22 +626,15 @@ IMPORTANTE:
         datosComida,
       };
     } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Error al analizar código de barras", {
         error: error.message,
         stack: error.stack,
         code: error.code,
       });
-      
-      // Si es un error conocido, lanzarlo con más contexto
-      if (error.message) {
-        throw new Error(
-          `Error al analizar el código de barras: ${error.message}`
-        );
-      }
-
-      // Error desconocido
-      throw new Error(
-        "Error al analizar el código de barras: Error desconocido"
+      throw new HttpsError(
+        "internal",
+        `Error al analizar el código de barras: ${error.message || "Error desconocido"}`
       );
     }
   }
@@ -700,8 +696,9 @@ Todos los valores son NÚMEROS. Si no conoces el alimento, usa estimaciones razo
       logger.info("Nutrición por 100g obtenida", { nombre, result });
       return result;
     } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
       logger.error("Error al obtener nutrición del ingrediente", error);
-      throw new Error(`Error al obtener valores nutricionales: ${error.message || "Error desconocido"}`);
+      throw new HttpsError("internal", `Error al obtener valores nutricionales: ${error.message || "Error desconocido"}`);
     }
   }
 );

@@ -8,7 +8,6 @@ import { ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 type RegistroComidaScreenProps = {
   onRegistroManualPress?: () => void;
   onCargarImagenComidaPress?: () => void;
-  onCargarImagenEtiquetaPress?: () => void;
 };
 
 type MenuOption = {
@@ -22,7 +21,6 @@ type MenuOption = {
 export function RegistroComidaScreen({
   onRegistroManualPress,
   onCargarImagenComidaPress,
-  onCargarImagenEtiquetaPress,
 }: RegistroComidaScreenProps) {
   const handleRegistroManual = () => {
     if (onRegistroManualPress) {
@@ -40,14 +38,6 @@ export function RegistroComidaScreen({
     }
   };
 
-  const handleCargarImagenEtiqueta = () => {
-    if (onCargarImagenEtiquetaPress) {
-      onCargarImagenEtiquetaPress();
-    } else {
-      console.log("Cargar imagen etiqueta nutricional");
-    }
-  };
-
   const menuOptions: MenuOption[] = [
     {
       title: "Registro manual",
@@ -62,13 +52,6 @@ export function RegistroComidaScreen({
       icon: "camera.fill",
       accentColor: "#A78BFA",
       onPress: handleCargarImagenComida,
-    },
-    {
-      title: "Etiqueta nutricional",
-      description: "Escanea la etiqueta del producto para importar sus datos",
-      icon: "barcode.viewfinder",
-      accentColor: MetaFitColors.calificacion.media,
-      onPress: handleCargarImagenEtiqueta,
     },
   ];
 

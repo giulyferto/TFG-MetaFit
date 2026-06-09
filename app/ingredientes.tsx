@@ -8,7 +8,8 @@ import {
   ingredienteDesdeIA,
   type Ingrediente,
 } from "@/utils/ingredientes";
-import { obtenerNutricionIngrediente } from "@/utils/openai";
+import { asegurarBase64JpegBarras, seleccionarImagen } from "@/utils/image";
+import { analizarCodigoBarras, obtenerNutricionIngrediente } from "@/utils/openai";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -76,6 +77,8 @@ export default function IngredientesScreen() {
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoPeso, setNuevoPeso] = useState("");
   const [isAgregando, setIsAgregando] = useState(false);
+  const [isEscaneando, setIsEscaneando] = useState(false);
+
   const [mostrarFormAgregar, setMostrarFormAgregar] = useState(params.desdeManual === "true");
   const nuevoNombreRef = useRef<TextInput>(null);
 
@@ -127,6 +130,55 @@ export default function IngredientesScreen() {
     } finally {
       setIsAgregando(false);
     }
+  };
+
+  const handleEscanearProducto = async () => {
+    await seleccionarImagen(
+      async (asset) => {
+        setMostrarFormAgregar(false);
+        setIsEscaneando(true);
+        try {
+          const imagenBase64 = await asegurarBase64JpegBarras(asset.uri);
+          const resultado = await analizarCodigoBarras(imagenBase64);
+
+          if (!resultado.esCodigoBarras || !resultado.datosComida) {
+            Alert.alert(
+              "Código de barras no reconocido",
+              resultado.mensaje || "No se pudo reconocer un código de barras en la imagen.",
+              [{ text: "OK" }]
+            );
+            return;
+          }
+
+          const datos = resultado.datosComida;
+          const cantidadGramos = parseFloat(String(datos.cantidad)) || 100;
+          const factor = 100 / cantidadGramos;
+
+          const nuevo: Ingrediente = {
+            id: nextId(),
+            nombre: String(datos.nombre),
+            peso: String(Math.round(cantidadGramos)),
+            energiaPor100g: Math.round((parseFloat(String(datos.energia)) || 0) * factor),
+            carbPor100g: Math.round((parseFloat(String(datos.carb)) || 0) * factor * 10) / 10,
+            proteinaPor100g: Math.round((parseFloat(String(datos.proteina)) || 0) * factor * 10) / 10,
+            fibraPor100g: Math.round((parseFloat(String(datos.fibra)) || 0) * factor * 10) / 10,
+            grasaPor100g: Math.round((parseFloat(String(datos.grasa)) || 0) * factor * 10) / 10,
+          };
+
+          setIngredientes((prev) => [...prev, nuevo]);
+        } catch (error: any) {
+          console.error("Detalle error barras:", JSON.stringify({ code: error.code, message: error.message, details: error.details }));
+          Alert.alert("Error", error.message || "No se pudo analizar el código de barras.");
+        } finally {
+          setIsEscaneando(false);
+        }
+      },
+      {
+        title: "Escanear producto",
+        message: "Toma o sube una foto del código de barras del producto",
+        allowsEditing: false,
+      }
+    );
   };
 
   const handleContinuar = () => {
@@ -404,11 +456,38 @@ export default function IngredientesScreen() {
           </View>
 
           {/* Add ingredient */}
-          {mostrarFormAgregar ? (
+          {isEscaneando && (
+            <View style={styles.escaneandoCard}>
+              <ActivityIndicator size="small" color={MetaFitColors.calificacion.media} />
+              <ThemedText style={styles.escaneandoText} lightColor={MetaFitColors.text.secondary}>
+                Analizando código de barras con IA...
+              </ThemedText>
+            </View>
+          )}
+
+          {!isEscaneando && mostrarFormAgregar ? (
             <View style={styles.addCard}>
               <ThemedText style={styles.addCardTitle} lightColor={MetaFitColors.text.primary}>
                 Nuevo ingrediente
               </ThemedText>
+
+              {/* Scan button */}
+              <TouchableOpacity style={styles.scanButton} onPress={handleEscanearProducto} activeOpacity={0.75}>
+                <IconSymbol name="barcode.viewfinder" size={18} color={MetaFitColors.calificacion.media} />
+                <ThemedText style={styles.scanButtonText} lightColor={MetaFitColors.calificacion.media}>
+                  Escanear código de barras
+                </ThemedText>
+              </TouchableOpacity>
+
+              {/* OR divider */}
+              <View style={styles.orDivider}>
+                <View style={styles.orDividerLine} />
+                <ThemedText style={styles.orDividerText} lightColor={MetaFitColors.text.tertiary}>
+                  o ingresa manualmente
+                </ThemedText>
+                <View style={styles.orDividerLine} />
+              </View>
+
               <View style={styles.addFieldGroup}>
                 <ThemedText style={styles.addFieldLabel} lightColor={MetaFitColors.text.secondary}>
                   Nombre
@@ -471,16 +550,18 @@ export default function IngredientesScreen() {
               )}
             </View>
           ) : (
-            <TouchableOpacity
-              style={styles.addTriggerButton}
-              onPress={() => { setMostrarFormAgregar(true); setTimeout(() => nuevoNombreRef.current?.focus(), 100); }}
-              activeOpacity={0.7}
-            >
-              <IconSymbol name="plus" size={16} color={MetaFitColors.button.primary} />
-              <ThemedText style={styles.addTriggerText} lightColor={MetaFitColors.button.primary}>
-                Agregar ingrediente
-              </ThemedText>
-            </TouchableOpacity>
+            !isEscaneando && (
+              <TouchableOpacity
+                style={styles.addTriggerButton}
+                onPress={() => { setMostrarFormAgregar(true); setTimeout(() => nuevoNombreRef.current?.focus(), 100); }}
+                activeOpacity={0.7}
+              >
+                <IconSymbol name="plus" size={16} color={MetaFitColors.button.primary} />
+                <ThemedText style={styles.addTriggerText} lightColor={MetaFitColors.button.primary}>
+                  Agregar ingrediente
+                </ThemedText>
+              </TouchableOpacity>
+            )
           )}
 
         </ScrollView>
@@ -657,6 +738,47 @@ const styles = StyleSheet.create({
   },
   macroChipValue: { fontSize: 12, fontWeight: "700" },
   macroChipLabel: { fontSize: 9, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.3 },
+
+  // Scanning loading
+  escaneandoCard: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginBottom: 8,
+  },
+  escaneandoText: { fontSize: 13, flex: 1 },
+
+  // Scan button inside form
+  scanButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: `${MetaFitColors.calificacion.media}12`,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: `${MetaFitColors.calificacion.media}40`,
+    paddingVertical: 12,
+  },
+  scanButtonText: { fontSize: 14, fontWeight: "600" as const },
+
+  // OR divider
+  orDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  orDividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: MetaFitColors.border.light,
+  },
+  orDividerText: { fontSize: 11, fontWeight: "500" as const },
 
   // Add ingredient
   addTriggerButton: {

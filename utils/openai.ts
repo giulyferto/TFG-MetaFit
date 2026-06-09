@@ -117,42 +117,43 @@ export type NutricionPor100g = {
   grasaPor100g: number;
 };
 
+function traducirErrorFirebase(error: any, mensajePorDefecto: string): string {
+  const msg: string = error.message || "";
+
+  if (error.code === "functions/not-found")
+    return "La función no está disponible. Por favor, contacta al soporte.";
+  if (error.code === "functions/permission-denied")
+    return "No tienes permiso para usar esta función. Por favor, inicia sesión.";
+  if (msg.includes("network") || msg.includes("connection") || msg.includes("fetch"))
+    return "Error de conexión. Por favor, verifica tu internet e intentá nuevamente.";
+  if (msg.includes("unsupported image") || msg.includes("supported image") || msg.includes("image format"))
+    return "Formato de imagen no compatible. Por favor, tomá la foto directamente con la cámara o usá una imagen JPG/PNG.";
+  if (msg.includes("quota") || msg.includes("rate limit") || msg.includes("429"))
+    return "El servicio está temporalmente ocupado. Por favor, intentá nuevamente en unos segundos.";
+
+  // Si el mensaje del servidor es el genérico de Firebase, usar el por defecto
+  if (msg.toLowerCase() === "internal" || msg === "") return mensajePorDefecto;
+
+  // Propagar el mensaje real del servidor
+  return msg;
+}
+
 /**
  * Analiza una imagen para determinar si es un plato de comida y extraer datos nutricionales
- * @param imagenBase64 - Imagen en formato base64
- * @returns Promise con el resultado del análisis
  */
 export async function analizarImagenComida(
   imagenBase64: string
 ): Promise<AnalizarImagenResponse> {
   try {
-    // Obtener la función callable
     const analizarImagen = httpsCallable<
       { imagenBase64: string },
       AnalizarImagenResponse
     >(functions, "analizarImagenComida");
-
-    // Llamar a la función
     const result = await analizarImagen({ imagenBase64 });
-
     return result.data;
   } catch (error: any) {
-    console.error("Error al analizar imagen:", error);
-    
-    // Proporcionar mensajes de error más específicos
-    let mensajeError = "No se pudo analizar la imagen en este momento.";
-    
-    if (error.code === "functions/internal") {
-      mensajeError = "Error interno del servidor. Por favor, intenta nuevamente más tarde.";
-    } else if (error.code === "functions/not-found") {
-      mensajeError = "La función no está disponible. Por favor, contacta al soporte.";
-    } else if (error.code === "functions/permission-denied") {
-      mensajeError = "No tienes permiso para usar esta función. Por favor, inicia sesión.";
-    } else if (error.message?.includes("network") || error.message?.includes("connection")) {
-      mensajeError = "Error de conexión. Por favor, verifica tu internet e intenta nuevamente.";
-    }
-    
-    throw new Error(mensajeError);
+    console.error("Error al analizar imagen:", error.code, error.message);
+    throw new Error(traducirErrorFirebase(error, "No se pudo analizar la imagen en este momento."));
   }
 }
 
@@ -164,6 +165,7 @@ export async function obtenerNutricionIngrediente(nombre: string): Promise<Nutri
 
 export type AnalizarCodigoBarrasResponse = {
   esCodigoBarras: boolean;
+  codigoLeido?: string;
   datosComida?: DatosComida;
   mensaje?: string;
 };
@@ -188,22 +190,8 @@ export async function analizarCodigoBarras(
 
     return result.data;
   } catch (error: any) {
-    console.error("Error al analizar código de barras:", error);
-    
-    // Proporcionar mensajes de error más específicos
-    let mensajeError = "No se pudo analizar el código de barras en este momento.";
-    
-    if (error.code === "functions/internal") {
-      mensajeError = "Error interno del servidor. Por favor, intenta nuevamente más tarde.";
-    } else if (error.code === "functions/not-found") {
-      mensajeError = "La función no está disponible. Por favor, contacta al soporte.";
-    } else if (error.code === "functions/permission-denied") {
-      mensajeError = "No tienes permiso para usar esta función. Por favor, inicia sesión.";
-    } else if (error.message?.includes("network") || error.message?.includes("connection")) {
-      mensajeError = "Error de conexión. Por favor, verifica tu internet e intenta nuevamente.";
-    }
-    
-    throw new Error(mensajeError);
+    console.error("Error al analizar código de barras:", error.code, error.message);
+    throw new Error(traducirErrorFirebase(error, "No se pudo analizar el código de barras en este momento."));
   }
 }
 
