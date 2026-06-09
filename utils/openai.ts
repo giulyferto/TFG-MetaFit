@@ -163,35 +163,54 @@ export async function obtenerNutricionIngrediente(nombre: string): Promise<Nutri
   return result.data;
 }
 
-export type AnalizarCodigoBarrasResponse = {
-  esCodigoBarras: boolean;
-  codigoLeido?: string;
-  datosComida?: DatosComida;
-  mensaje?: string;
+export type LeerEANResponse = {
+  encontrado: boolean;
+  ean?: string;
+};
+
+export type LeerEtiquetaResponse = {
+  encontrado: boolean;
+  nombre?: string;
+  cantidad?: number;
+  energiaPor100g?: number;
+  carbPor100g?: number;
+  proteinaPor100g?: number;
+  fibraPor100g?: number;
+  grasaPor100g?: number;
 };
 
 /**
- * Analiza una imagen para reconocer un código de barras y extraer información del producto nutricional
- * @param imagenBase64 - Imagen en formato base64
- * @returns Promise con el resultado del análisis
+ * Usa GPT-4o para leer la tabla nutricional de la foto de un envase.
  */
-export async function analizarCodigoBarras(
-  imagenBase64: string
-): Promise<AnalizarCodigoBarrasResponse> {
+export async function leerEtiquetaNutricional(imagenBase64: string): Promise<LeerEtiquetaResponse> {
   try {
-    // Obtener la función callable
-    const analizarCodigo = httpsCallable<
-      { imagenBase64: string },
-      AnalizarCodigoBarrasResponse
-    >(functions, "analizarCodigoBarras");
-
-    // Llamar a la función
-    const result = await analizarCodigo({ imagenBase64 });
-
+    const fn = httpsCallable<{ imagenBase64: string }, LeerEtiquetaResponse>(
+      functions,
+      "leerEtiquetaNutricional"
+    );
+    const result = await fn({ imagenBase64 });
     return result.data;
   } catch (error: any) {
-    console.error("Error al analizar código de barras:", error.code, error.message);
-    throw new Error(traducirErrorFirebase(error, "No se pudo analizar el código de barras en este momento."));
+    console.error("Error al leer etiqueta:", error.code, error.message);
+    throw new Error(traducirErrorFirebase(error, "No se pudo leer la tabla nutricional."));
+  }
+}
+
+/**
+ * Usa GPT-4o para leer los dígitos impresos debajo del código de barras en una imagen.
+ * Fallback cuando expo-camera no puede detectar el código en tiempo real.
+ */
+export async function leerEANDeImagen(imagenBase64: string): Promise<LeerEANResponse> {
+  try {
+    const fn = httpsCallable<{ imagenBase64: string }, LeerEANResponse>(
+      functions,
+      "analizarCodigoBarras"
+    );
+    const result = await fn({ imagenBase64 });
+    return result.data;
+  } catch (error: any) {
+    console.error("Error al leer EAN:", error.code, error.message);
+    throw new Error(traducirErrorFirebase(error, "No se pudieron leer los dígitos del código de barras."));
   }
 }
 

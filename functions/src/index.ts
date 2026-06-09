@@ -98,10 +98,23 @@ interface AnalizarCodigoBarrasRequest {
 }
 
 interface AnalizarCodigoBarrasResponse {
-  esCodigoBarras: boolean;
-  codigoLeido?: string;
-  datosComida?: DatosComida;
-  mensaje?: string;
+  encontrado: boolean;
+  ean?: string;
+}
+
+interface LeerEtiquetaRequest {
+  imagenBase64: string;
+}
+
+interface LeerEtiquetaResponse {
+  encontrado: boolean;
+  nombre?: string;
+  cantidad?: number;
+  energiaPor100g?: number;
+  carbPor100g?: number;
+  proteinaPor100g?: number;
+  fibraPor100g?: number;
+  grasaPor100g?: number;
 }
 
 /**
@@ -496,23 +509,17 @@ export const analizarCodigoBarras = onCall<AnalizarCodigoBarrasRequest>(
   {
     secrets: [openaiApiKey],
     cors: true,
+    memory: "512MiB",
   },
   async (request) => {
     try {
       const { imagenBase64 } = request.data;
+      if (!imagenBase64) throw new HttpsError("invalid-argument", "Se requiere una imagen");
 
-      if (!imagenBase64) {
-        throw new Error("No se proporcionó una imagen");
-      }
+      const openai = new OpenAI({ apiKey: openaiApiKey.value() });
 
-      // Inicializar OpenAI
-      const openai = new OpenAI({
-        apiKey: openaiApiKey.value(),
-      });
+      logger.info("Leyendo dígitos del código de barras con OpenAI Vision");
 
-      logger.info("Analizando código de barras con OpenAI Vision");
-
-      // Llamar a OpenAI Vision API
       const response = await openai.chat.completions.create({
         model: "gpt-4o",
         messages: [
@@ -521,121 +528,43 @@ export const analizarCodigoBarras = onCall<AnalizarCodigoBarrasRequest>(
             content: [
               {
                 type: "text",
-                text: `Eres un experto en identificación de productos alimenticios a través de códigos de barras.
+                text: `Tu única tarea es leer los dígitos numéricos impresos debajo del código de barras en esta imagen.
 
-PASO 1 - LECTURA DEL CÓDIGO:
-Lee y decodifica con precisión todos los dígitos del código de barras visible en la imagen. Los códigos EAN-13 tienen 13 dígitos y los UPC-A tienen 12.
+Los códigos EAN-13 tienen 13 dígitos. Los UPC-A tienen 12 dígitos.
+Enfocate en los NÚMEROS IMPRESOS debajo de las barras, no en las barras en sí.
+Podés usar el texto visible en el envase como pista adicional para confirmar el producto.
 
-PASO 2 - IDENTIFICACIÓN DEL PRODUCTO:
-Usando el número exacto que leíste, identifica el producto alimenticio específico al que corresponde ese código de barras, basándote en tu conocimiento de bases de datos de productos (Open Food Facts, USDA, bases de datos de supermercados, etc.).
+Si los dígitos son legibles, responde SOLO con este JSON:
+{ "encontrado": true, "ean": "1234567890123" }
 
-PASO 3 - DATOS NUTRICIONALES:
-Devuelve la información nutricional real de ese producto específico según su etiqueta conocida. Los valores deben ser por porción indicada en el envase.
+Si los dígitos NO son legibles o no hay código de barras visible, responde SOLO con:
+{ "encontrado": false }
 
-Si la imagen NO contiene un código de barras claro y legible, responde EXACTAMENTE:
-{
-  "esCodigoBarras": false,
-  "mensaje": "No se encontró un código de barras legible en la imagen"
-}
-
-Si SÍ identificaste el producto por su código, responde EXACTAMENTE:
-{
-  "esCodigoBarras": true,
-  "codigoLeido": "número exacto del código de barras leído",
-  "datosComida": {
-    "nombre": "nombre comercial exacto del producto",
-    "cantidad": "gramos por porción según la etiqueta (solo número)",
-    "energia": "kcal por porción (solo número)",
-    "carb": "carbohidratos en g por porción (solo número)",
-    "proteina": "proteínas en g por porción (solo número)",
-    "fibra": "fibra en g por porción (solo número)",
-    "grasa": "grasas en g por porción (solo número)"
-  }
-}
-
-REGLAS:
-- Responde ÚNICAMENTE con el JSON, sin texto adicional
-- Todos los valores numéricos son strings (ej: "250", "4.5", "12")
-- Si conocés el producto por el código pero no tenés sus macros exactos, estimálos razonablemente para ese producto específico
-- Si no podés leer el código con claridad suficiente, devuelve esCodigoBarras: false`,
+SOLO el JSON, sin texto adicional.`,
               },
               {
                 type: "image_url",
-                image_url: {
-                  url: `data:image/jpeg;base64,${imagenBase64}`,
-                },
+                image_url: { url: `data:image/jpeg;base64,${imagenBase64}` },
               },
             ],
           },
         ],
-        max_tokens: 500,
+        max_tokens: 60,
       });
 
-      const contenido = response.choices[0]?.message?.content;
-      if (!contenido) {
-        throw new Error("No se recibió respuesta de OpenAI");
-      }
+      const contenido = response.choices[0]?.message?.content ?? "";
+      const jsonMatch = contenido.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new HttpsError("internal", "Respuesta inválida de OpenAI");
 
-      logger.info("Respuesta de OpenAI recibida", { contenido });
+      const resultado: AnalizarCodigoBarrasResponse = JSON.parse(jsonMatch[0]);
 
-      // Parsear la respuesta JSON
-      let resultado: AnalizarCodigoBarrasResponse;
-      try {
-        // Limpiar el contenido para extraer solo el JSON
-        const jsonMatch = contenido.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          resultado = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error("No se encontró JSON en la respuesta");
-        }
-      } catch (parseError) {
-        logger.error("Error al parsear respuesta de OpenAI", parseError);
-        throw new Error("Error al procesar la respuesta de la IA");
-      }
+      logger.info("Lectura EAN completada", { encontrado: resultado.encontrado, ean: resultado.ean ?? "—" });
 
-      if (!resultado.esCodigoBarras) {
-        return {
-          esCodigoBarras: false,
-          mensaje: resultado.mensaje || "No se pudo reconocer un código de barras en la imagen",
-        };
-      }
-
-      // Validar que todos los campos estén presentes
-      if (!resultado.datosComida) {
-        throw new Error("No se pudieron extraer los datos nutricionales");
-      }
-
-      // Asegurar que todos los campos tengan valores por defecto
-      const datosComida: DatosComida = {
-        nombre: resultado.datosComida.nombre || "",
-        cantidad: resultado.datosComida.cantidad || "0",
-        energia: resultado.datosComida.energia || "0",
-        carb: resultado.datosComida.carb || "0",
-        proteina: resultado.datosComida.proteina || "0",
-        fibra: resultado.datosComida.fibra || "0",
-        grasa: resultado.datosComida.grasa || "0",
-      };
-
-      logger.info("Código de barras analizado exitosamente", {
-        codigoLeido: resultado.codigoLeido || "no reportado",
-        nombre: datosComida.nombre,
-      });
-
-      return {
-        esCodigoBarras: true,
-        datosComida,
-      };
+      return resultado;
     } catch (error: any) {
       if (error instanceof HttpsError) throw error;
-      logger.error("Error al analizar código de barras", {
-        error: error.message,
-        stack: error.stack,
-        code: error.code,
-      });
-      throw new HttpsError(
-        "internal",
-        `Error al analizar el código de barras: ${error.message || "Error desconocido"}`
-      );
+      logger.error("Error al leer código de barras", { error: error.message });
+      throw new HttpsError("internal", `Error al leer el código de barras: ${error.message || "Error desconocido"}`);
     }
   }
 );
@@ -699,6 +628,104 @@ Todos los valores son NÚMEROS. Si no conoces el alimento, usa estimaciones razo
       if (error instanceof HttpsError) throw error;
       logger.error("Error al obtener nutrición del ingrediente", error);
       throw new HttpsError("internal", `Error al obtener valores nutricionales: ${error.message || "Error desconocido"}`);
+    }
+  }
+);
+
+/**
+ * Lee la tabla nutricional de la foto de un envase y devuelve los macros por 100g.
+ */
+export const leerEtiquetaNutricional = onCall<LeerEtiquetaRequest>(
+  {
+    secrets: [openaiApiKey],
+    cors: true,
+    memory: "512MiB",
+  },
+  async (request) => {
+    try {
+      const { imagenBase64 } = request.data;
+      if (!imagenBase64) throw new HttpsError("invalid-argument", "Se requiere una imagen");
+
+      const openai = new OpenAI({ apiKey: openaiApiKey.value() });
+
+      logger.info("Leyendo etiqueta nutricional con OpenAI Vision");
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `Analizá la tabla de información nutricional de este envase de alimento.
+
+Extraé los siguientes datos:
+- Nombre del producto (si está visible en la imagen)
+- Tamaño de la porción en gramos (buscá "porción", "serving size", etc.)
+- Valores nutricionales POR 100 GRAMOS:
+  - Energía (kcal) — buscá "valor energético", "energía", "calorías", "kcal"
+  - Carbohidratos totales (g)
+  - Proteínas (g)
+  - Fibra alimentaria (g) — si no figura usá 0
+  - Grasas totales (g)
+
+Si la etiqueta muestra valores "por porción" en lugar de "por 100g", calculá los valores por 100g dividiendo por el tamaño de porción y multiplicando por 100.
+
+Respondé ÚNICAMENTE con este JSON (sin texto adicional):
+{
+  "encontrado": true,
+  "nombre": "nombre del producto o vacío si no se ve",
+  "cantidad": 30,
+  "energiaPor100g": 450,
+  "carbPor100g": 60,
+  "proteinaPor100g": 8,
+  "fibraPor100g": 3,
+  "grasaPor100g": 18
+}
+
+Si la imagen NO muestra una tabla nutricional o los valores son completamente ilegibles, respondé SOLO con:
+{"encontrado": false}`,
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:image/jpeg;base64,${imagenBase64}` },
+              },
+            ],
+          },
+        ],
+        max_tokens: 200,
+      });
+
+      const contenido = response.choices[0]?.message?.content ?? "";
+      const jsonMatch = contenido.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new HttpsError("internal", "Respuesta inválida de OpenAI");
+
+      const raw = JSON.parse(jsonMatch[0]) as LeerEtiquetaResponse;
+
+      if (!raw.encontrado) {
+        logger.info("No se encontró tabla nutricional en la imagen");
+        return { encontrado: false };
+      }
+
+      const resultado: LeerEtiquetaResponse = {
+        encontrado: true,
+        nombre: (raw.nombre || "").trim() || undefined,
+        cantidad: Number(raw.cantidad) || 100,
+        energiaPor100g: Math.round(Number(raw.energiaPor100g) || 0),
+        carbPor100g: Math.round((Number(raw.carbPor100g) || 0) * 10) / 10,
+        proteinaPor100g: Math.round((Number(raw.proteinaPor100g) || 0) * 10) / 10,
+        fibraPor100g: Math.round((Number(raw.fibraPor100g) || 0) * 10) / 10,
+        grasaPor100g: Math.round((Number(raw.grasaPor100g) || 0) * 10) / 10,
+      };
+
+      logger.info("Etiqueta nutricional leída", { nombre: resultado.nombre, energiaPor100g: resultado.energiaPor100g });
+
+      return resultado;
+    } catch (error: any) {
+      if (error instanceof HttpsError) throw error;
+      logger.error("Error al leer etiqueta nutricional", { error: error.message });
+      throw new HttpsError("internal", `Error al leer la etiqueta: ${error.message || "Error desconocido"}`);
     }
   }
 );

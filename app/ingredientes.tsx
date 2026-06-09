@@ -8,8 +8,11 @@ import {
   ingredienteDesdeIA,
   type Ingrediente,
 } from "@/utils/ingredientes";
-import { asegurarBase64JpegBarras, seleccionarImagen } from "@/utils/image";
-import { analizarCodigoBarras, obtenerNutricionIngrediente } from "@/utils/openai";
+import { BarcodeScannerOverlay } from "@/components/BarcodeScannerOverlay";
+import { asegurarBase64Jpeg, asegurarBase64JpegBarras, seleccionarImagen } from "@/utils/image";
+import * as ImagePicker from "expo-image-picker";
+import { buscarProductoPorEAN } from "@/utils/open-food-facts";
+import { leerEANDeImagen, leerEtiquetaNutricional, obtenerNutricionIngrediente } from "@/utils/openai";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
@@ -78,6 +81,7 @@ export default function IngredientesScreen() {
   const [nuevoPeso, setNuevoPeso] = useState("");
   const [isAgregando, setIsAgregando] = useState(false);
   const [isEscaneando, setIsEscaneando] = useState(false);
+  const [mostrarScanner, setMostrarScanner] = useState(false);
 
   const [mostrarFormAgregar, setMostrarFormAgregar] = useState(params.desdeManual === "true");
   const nuevoNombreRef = useRef<TextInput>(null);
@@ -132,53 +136,121 @@ export default function IngredientesScreen() {
     }
   };
 
-  const handleEscanearProducto = async () => {
-    await seleccionarImagen(
-      async (asset) => {
-        setMostrarFormAgregar(false);
-        setIsEscaneando(true);
-        try {
-          const imagenBase64 = await asegurarBase64JpegBarras(asset.uri);
-          const resultado = await analizarCodigoBarras(imagenBase64);
-
-          if (!resultado.esCodigoBarras || !resultado.datosComida) {
-            Alert.alert(
-              "Código de barras no reconocido",
-              resultado.mensaje || "No se pudo reconocer un código de barras en la imagen.",
-              [{ text: "OK" }]
-            );
-            return;
-          }
-
-          const datos = resultado.datosComida;
-          const cantidadGramos = parseFloat(String(datos.cantidad)) || 100;
-          const factor = 100 / cantidadGramos;
-
-          const nuevo: Ingrediente = {
-            id: nextId(),
-            nombre: String(datos.nombre),
-            peso: String(Math.round(cantidadGramos)),
-            energiaPor100g: Math.round((parseFloat(String(datos.energia)) || 0) * factor),
-            carbPor100g: Math.round((parseFloat(String(datos.carb)) || 0) * factor * 10) / 10,
-            proteinaPor100g: Math.round((parseFloat(String(datos.proteina)) || 0) * factor * 10) / 10,
-            fibraPor100g: Math.round((parseFloat(String(datos.fibra)) || 0) * factor * 10) / 10,
-            grasaPor100g: Math.round((parseFloat(String(datos.grasa)) || 0) * factor * 10) / 10,
-          };
-
-          setIngredientes((prev) => [...prev, nuevo]);
-        } catch (error: any) {
-          console.error("Detalle error barras:", JSON.stringify({ code: error.code, message: error.message, details: error.details }));
-          Alert.alert("Error", error.message || "No se pudo analizar el código de barras.");
-        } finally {
-          setIsEscaneando(false);
-        }
-      },
-      {
-        title: "Escanear producto",
-        message: "Toma o sube una foto del código de barras del producto",
-        allowsEditing: false,
+  const agregarIngredienteDesdeEAN = async (ean: string) => {
+    setMostrarScanner(false);
+    setIsEscaneando(true);
+    try {
+      const producto = await buscarProductoPorEAN(ean);
+      if (!producto) {
+        Alert.alert(
+          "Producto no encontrado",
+          `No se encontró el código ${ean} en la base de datos. Podés ingresarlo manualmente.`,
+          [{ text: "OK" }]
+        );
+        return;
       }
-    );
+      const nuevo: Ingrediente = {
+        id: nextId(),
+        nombre: producto.nombre,
+        peso: String(producto.cantidad),
+        energiaPor100g: producto.energiaPor100g,
+        carbPor100g: producto.carbPor100g,
+        proteinaPor100g: producto.proteinaPor100g,
+        fibraPor100g: producto.fibraPor100g,
+        grasaPor100g: producto.grasaPor100g,
+      };
+      setIngredientes((prev) => [...prev, nuevo]);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo obtener el producto.");
+    } finally {
+      setIsEscaneando(false);
+    }
+  };
+
+  const handleFallbackFoto = async () => {
+    setMostrarScanner(false);
+
+    let uri: string | null = null;
+    try {
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 1, base64: false });
+      if (!result.canceled && result.assets[0]) uri = result.assets[0].uri;
+    } catch {
+      // Simulador sin cámara real — abrir galería como alternativa
+      const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: false, quality: 1, base64: false });
+      if (!result.canceled && result.assets[0]) uri = result.assets[0].uri;
+    }
+
+    if (!uri) return;
+
+    setIsEscaneando(true);
+    try {
+      const imagenBase64 = await asegurarBase64JpegBarras(uri);
+      const resultado = await leerEANDeImagen(imagenBase64);
+      if (!resultado.encontrado || !resultado.ean) {
+        Alert.alert(
+          "No se pudo leer el código",
+          "Los dígitos no eran legibles. Intentá tomar la foto más cerca y con buena luz.",
+          [{ text: "OK" }]
+        );
+        setIsEscaneando(false);
+        return;
+      }
+      await agregarIngredienteDesdeEAN(resultado.ean);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo procesar la imagen.");
+      setIsEscaneando(false);
+    }
+  };
+
+  const handleEscanearProducto = () => {
+    setMostrarFormAgregar(false);
+    setMostrarScanner(true);
+  };
+
+  const handleFotoEtiqueta = async () => {
+    setMostrarFormAgregar(false);
+
+    let uri: string | null = null;
+    try {
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: false, quality: 1, base64: false });
+      if (!result.canceled && result.assets[0]) uri = result.assets[0].uri;
+    } catch {
+      const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: false, quality: 1, base64: false });
+      if (!result.canceled && result.assets[0]) uri = result.assets[0].uri;
+    }
+
+    if (!uri) return;
+
+    setIsEscaneando(true);
+    try {
+      const imagenBase64 = await asegurarBase64Jpeg(uri);
+      const resultado = await leerEtiquetaNutricional(imagenBase64);
+
+      if (!resultado.encontrado) {
+        Alert.alert(
+          "No se encontró tabla nutricional",
+          "Asegurate de enfocar bien la tabla de información nutricional del envase.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
+      const nuevo: Ingrediente = {
+        id: nextId(),
+        nombre: resultado.nombre || "Producto escaneado",
+        peso: String(resultado.cantidad || 100),
+        energiaPor100g: resultado.energiaPor100g ?? 0,
+        carbPor100g: resultado.carbPor100g ?? 0,
+        proteinaPor100g: resultado.proteinaPor100g ?? 0,
+        fibraPor100g: resultado.fibraPor100g ?? 0,
+        grasaPor100g: resultado.grasaPor100g ?? 0,
+      };
+      setIngredientes((prev) => [...prev, nuevo]);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo procesar la imagen.");
+    } finally {
+      setIsEscaneando(false);
+    }
   };
 
   const handleContinuar = () => {
@@ -479,6 +551,14 @@ export default function IngredientesScreen() {
                 </ThemedText>
               </TouchableOpacity>
 
+              {/* Label photo button */}
+              <TouchableOpacity style={styles.labelButton} onPress={handleFotoEtiqueta} activeOpacity={0.75}>
+                <IconSymbol name="camera.viewfinder" size={18} color={MetaFitColors.button.primary} />
+                <ThemedText style={styles.labelButtonText} lightColor={MetaFitColors.button.primary}>
+                  Foto de etiqueta nutricional
+                </ThemedText>
+              </TouchableOpacity>
+
               {/* OR divider */}
               <View style={styles.orDivider}>
                 <View style={styles.orDividerLine} />
@@ -576,6 +656,14 @@ export default function IngredientesScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {mostrarScanner && (
+        <BarcodeScannerOverlay
+          onEANDetectado={agregarIngredienteDesdeEAN}
+          onFallbackFoto={handleFallbackFoto}
+          onCerrar={() => setMostrarScanner(false)}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -766,6 +854,19 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   scanButtonText: { fontSize: 14, fontWeight: "600" as const },
+
+  labelButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: `${MetaFitColors.button.primary}12`,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: `${MetaFitColors.button.primary}40`,
+    paddingVertical: 12,
+  },
+  labelButtonText: { fontSize: 14, fontWeight: "600" as const },
 
   // OR divider
   orDivider: {
