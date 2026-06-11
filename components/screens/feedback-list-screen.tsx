@@ -324,6 +324,8 @@ export function FeedbackListScreen() {
           <TablaConsumos
             consumos={consumos}
             isLoading={isLoading}
+            fechaSeleccionada={selectedDate}
+            onAgregarComida={() => router.push({ pathname: "/registro-comida", params: { fecha: selectedDate.toISOString() } })}
             onEditar={handleEditar}
             onEliminar={handleEliminar}
             onReagregar={handleReagregar}

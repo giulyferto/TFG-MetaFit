@@ -1,16 +1,17 @@
 import { RegistroComidaScreen } from '@/components/screens/registro-comida-screen';
 import { asegurarBase64Jpeg, seleccionarImagen } from '@/utils/image';
 import { analizarImagenComida } from '@/utils/openai';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';
 
 export default function RegistroComidaPage() {
+  const { fecha } = useLocalSearchParams<{ fecha?: string }>();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [imagenUri, setImagenUri] = useState<string | null>(null);
 
   const handleRegistroManual = () => {
-    router.push('/registro-manual');
+    router.push({ pathname: '/registro-manual', params: fecha ? { fecha } : {} });
   };
 
   const handleCargarImagenComida = async () => {
@@ -44,6 +45,7 @@ export default function RegistroComidaPage() {
             nombre: resultado.nombre || resultado.datosComida?.nombre || '',
             ingredientesJson: JSON.stringify(resultado.ingredientes),
             imagenUri: uri,
+            ...(fecha ? { fecha } : {}),
           },
         });
         return;
@@ -62,6 +64,7 @@ export default function RegistroComidaPage() {
             grasa: resultado.datosComida.grasa || '',
             desdeIA: 'true',
             imagenUri: uri,
+            ...(fecha ? { fecha } : {}),
           },
         });
       }

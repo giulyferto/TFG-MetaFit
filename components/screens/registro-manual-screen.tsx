@@ -20,6 +20,7 @@ type RegistroManualScreenProps = {
   imagenUri?: string;
   ingredientes?: IngredienteGuardado[];
   tipoComidaInicial?: string;
+  fechaInicial?: Date;
   onAgregarAlDiarioPress?: (datosComida: DatosComida, tipoComida: string, registroComidaId: string, ingredientes?: IngredienteGuardado[]) => void;
   onCancelarPress?: () => void;
 };
@@ -29,6 +30,7 @@ export function RegistroManualScreen({
   imagenUri,
   ingredientes,
   tipoComidaInicial,
+  fechaInicial,
   onAgregarAlDiarioPress,
   onCancelarPress,
 }: RegistroManualScreenProps) {
@@ -55,8 +57,8 @@ export function RegistroManualScreen({
 
   const [localFotoUri, setLocalFotoUri] = useState<string | null>(null);
 
-  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(new Date());
-  const [tempFecha, setTempFecha] = useState<Date>(new Date());
+  const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(fechaInicial ?? new Date());
+  const [tempFecha, setTempFecha] = useState<Date>(fechaInicial ?? new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const esHoy = (d: Date) => {

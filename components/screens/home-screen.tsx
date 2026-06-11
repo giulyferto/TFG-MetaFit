@@ -207,6 +207,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
           isLoading={isLoading}
           itemsPerPage={5}
           actionsMode="sheet"
+          onAgregarComida={() => router.push("/registro-comida")}
           onEditar={handleEditar}
           onReagregar={handleReagregar}
           onEliminar={handleEliminar}

@@ -45,6 +45,7 @@ export default function IngredientesScreen() {
     desdeReagregar?: string;
     registroId?: string;
     tipoComida?: string;
+    fecha?: string;
   }>();
 
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>(() => {
@@ -331,6 +332,7 @@ export default function IngredientesScreen() {
         desdeIA: "true",
         imagenUri: params.imagenUri || "",
         tipoComida: tipoComida || "",
+        ...(params.fecha ? { fecha: params.fecha } : {}),
         ingredientesJson: JSON.stringify(
           ingredientes.map((ing) => ({
             nombre: ing.nombre,

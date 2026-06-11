@@ -16,7 +16,10 @@ export default function RegistroManualPage() {
     imagenUri?: string;
     ingredientesJson?: string;
     tipoComida?: string;
+    fecha?: string;
   }>();
+
+  const fechaInicial = params.fecha ? new Date(params.fecha) : undefined;
 
   const datosIniciales: DatosComida | undefined = params.desdeIA === 'true' ? {
     nombre: params.nombre || '',
@@ -65,6 +68,7 @@ export default function RegistroManualPage() {
       imagenUri={params.imagenUri || undefined}
       ingredientes={ingredientes}
       tipoComidaInicial={params.tipoComida || undefined}
+      fechaInicial={fechaInicial}
       onAgregarAlDiarioPress={handleAgregarAlDiario}
       onCancelarPress={handleCancelar}
     />

@@ -4,7 +4,7 @@ import { MetaFitColors } from "@/constants/theme";
 import type { Consumo } from "@/utils/consumos";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { ActionSheetIOS, ActivityIndicator, Alert, Platform, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActionSheetIOS, ActivityIndicator, Alert, Platform, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
 
 const TIPO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   Desayuno: { label: "Desayuno", color: "#C47A2B", bg: "rgba(228, 160, 60, 0.12)" },
@@ -40,16 +40,33 @@ type TablaConsumosProps = {
   consumos: Consumo[];
   isLoading: boolean;
   itemsPerPage?: number;
+  fechaSeleccionada?: Date;
+  onAgregarComida?: () => void;
   onEliminar?: (id: string) => void;
   onEditar?: (consumo: Consumo) => void;
   onReagregar?: (consumo: Consumo) => void;
   actionsMode?: "inline" | "sheet";
 };
 
+function esMismaFecha(a: Date, b: Date) {
+  return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+}
+
+function formatearFechaLarga(fecha: Date): string {
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  const hoy = new Date();
+  if (fecha.getFullYear() === hoy.getFullYear()) {
+    return `el ${fecha.getDate()} de ${meses[fecha.getMonth()]}`;
+  }
+  return `el ${fecha.getDate()} de ${meses[fecha.getMonth()]} de ${fecha.getFullYear()}`;
+}
+
 export function TablaConsumos({
   consumos,
   isLoading,
   itemsPerPage = 5,
+  fechaSeleccionada,
+  onAgregarComida,
   onEliminar,
   onEditar,
   onReagregar,
@@ -96,17 +113,25 @@ export function TablaConsumos({
   }
 
   if (consumos.length === 0) {
+    const esHoy = !fechaSeleccionada || esMismaFecha(fechaSeleccionada, new Date());
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrapper}>
           <ThemedText style={styles.emptyIcon}>🥗</ThemedText>
         </View>
         <ThemedText style={styles.emptyTitle} lightColor={MetaFitColors.text.primary}>
-          Sin registros aún
+          {esHoy ? "Sin registros aún" : "Sin registros ese día"}
         </ThemedText>
         <ThemedText style={styles.emptySubtitle} lightColor={MetaFitColors.text.secondary}>
-          Registra tu primera comida para comenzar a rastrear tu nutrición
+          {esHoy
+            ? "Registra tu primera comida del día para comenzar a rastrear tu nutrición"
+            : `No agregaste ninguna comida ${formatearFechaLarga(fechaSeleccionada!)}`}
         </ThemedText>
+        {onAgregarComida && (
+          <Pressable style={styles.emptyButton} onPress={onAgregarComida}>
+            <ThemedText style={styles.emptyButtonText}>Agregar comida</ThemedText>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -345,6 +370,11 @@ export function TablaConsumos({
           </TouchableOpacity>
         </View>
       )}
+      {onAgregarComida && (
+        <Pressable style={styles.addButton} onPress={onAgregarComida}>
+          <ThemedText style={styles.addButtonText}>+ Agregar comida</ThemedText>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -391,6 +421,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     lineHeight: 20,
+  },
+  emptyButton: {
+    marginTop: 20,
+    backgroundColor: MetaFitColors.button.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  addButton: {
+    marginTop: 14,
+    alignSelf: "center",
+    borderWidth: 1.5,
+    borderColor: MetaFitColors.button.primary,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  addButtonText: {
+    color: MetaFitColors.button.primary,
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   // Card list
