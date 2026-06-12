@@ -1,6 +1,6 @@
 import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
 import { auth, db } from "@/firebase";
-import { addDoc, collection, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
 import { subirImagenComida } from "./storage";
 
 export type ComidaAnterior = {
@@ -67,6 +67,12 @@ export async function obtenerComidasAnteriores(limite: number = 50): Promise<Com
     console.error("Error al obtener comidas anteriores:", error);
     return [];
   }
+}
+
+export async function eliminarComida(id: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("No hay usuario autenticado");
+  await deleteDoc(doc(db, "comidas", id));
 }
 
 export type DatosComidaParaGuardar = DatosComida & {

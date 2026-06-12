@@ -63,18 +63,18 @@ export default function TabLayout() {
       <Tabs.Screen
         name="feedback"
         options={{
-          title: 'Feedback',
+          title: 'Historial',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="chatbubble-outline" iconActive="chatbubble" focused={focused} />
+            <TabIcon icon="time-outline" iconActive="time" focused={focused} />
           ),
         }}
       />
       <Tabs.Screen
-        name="configuracion"
+        name="consulta"
         options={{
-          title: 'Configuración',
+          title: 'Consulta',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="settings-outline" iconActive="settings" focused={focused} />
+            <TabIcon icon="chatbubble-outline" iconActive="chatbubble" focused={focused} />
           ),
         }}
       />
@@ -85,6 +85,13 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <TabIcon icon="person-outline" iconActive="person" focused={focused} />
           ),
+        }}
+      />
+      <Tabs.Screen
+        name="configuracion"
+        options={{
+          href: null,
+          title: 'Configuraciones de usuario',
         }}
       />
     </Tabs>

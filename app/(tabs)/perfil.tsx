@@ -65,6 +65,20 @@ export default function PerfilScreen() {
 
   const configOptions: ConfigOption[] = [
     {
+      id: 'nutritional',
+      title: 'Información nutricional',
+      subtitle: 'Tu perfil y objetivos nutricionales',
+      icon: 'chart.bar',
+      onPress: () => router.push('/informacion-nutricional'),
+    },
+    {
+      id: 'saved-foods',
+      title: 'Comidas guardadas',
+      subtitle: 'Gestionar tus alimentos guardados',
+      icon: 'fork.knife',
+      onPress: () => router.push('/comidas-guardadas'),
+    },
+    {
       id: 'account',
       title: 'Mi cuenta',
       subtitle: 'Cambiar contraseña · Eliminar cuenta',
@@ -112,7 +126,7 @@ export default function PerfilScreen() {
           </View>
 
           <ThemedText style={styles.title} lightColor={MetaFitColors.text.primary}>
-            Perfil
+            Configuraciones de usuario
           </ThemedText>
           {user && (
             <ThemedText style={styles.email} lightColor={MetaFitColors.text.secondary}>
@@ -124,7 +138,7 @@ export default function PerfilScreen() {
         {/* Options */}
         <View style={styles.section}>
           <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.tertiary}>
-            Cuenta
+            Configuraciones
           </ThemedText>
           <View style={styles.optionsContainer}>
             {configOptions.map((option) => (
