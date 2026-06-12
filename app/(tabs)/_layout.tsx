@@ -70,11 +70,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="consulta"
+        name="analisis"
         options={{
-          title: 'Consulta',
+          title: 'Análisis',
           tabBarIcon: ({ focused }) => (
-            <TabIcon icon="chatbubble-outline" iconActive="chatbubble" focused={focused} />
+            <TabIcon icon="stats-chart-outline" iconActive="stats-chart" focused={focused} />
           ),
         }}
       />
@@ -86,6 +86,10 @@ export default function TabLayout() {
             <TabIcon icon="person-outline" iconActive="person" focused={focused} />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="consulta"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="configuracion"

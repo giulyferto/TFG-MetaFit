@@ -196,6 +196,34 @@ export async function leerEtiquetaNutricional(imagenBase64: string): Promise<Lee
   }
 }
 
+export type AnalizarPatronResponse = {
+  analisis: string;
+  resumen: {
+    puntosFuertes: string[];
+    puntosDébiles: string[];
+    recomendaciones: string[];
+  };
+  calificacionGeneral: "Muy saludable" | "Equilibrada" | "Poco nutritiva";
+};
+
+export async function analizarPatronAlimenticio(
+  consumos: { id: string; nombre?: string; tipoComida?: string; fechaCreacion: string; energia?: string; carb?: string; proteina?: string; fibra?: string; grasa?: string; calificacion?: string | null }[],
+  rangoFechas: string,
+  perfilNutricional?: Record<string, any>
+): Promise<AnalizarPatronResponse> {
+  try {
+    const fn = httpsCallable<
+      { consumos: typeof consumos; rangoFechas: string; perfilNutricional?: Record<string, any> },
+      AnalizarPatronResponse
+    >(functions, "analizarPatronAlimenticio");
+    const result = await fn({ consumos, rangoFechas, perfilNutricional });
+    return result.data;
+  } catch (error: any) {
+    console.error("Error al analizar patrón alimenticio:", error.code, error.message);
+    throw new Error(traducirErrorFirebase(error, "No se pudo analizar el patrón alimenticio."));
+  }
+}
+
 /**
  * Usa GPT-4o para leer los dígitos impresos debajo del código de barras en una imagen.
  * Fallback cuando expo-camera no puede detectar el código en tiempo real.
