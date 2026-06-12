@@ -114,6 +114,16 @@ export async function asegurarBase64Jpeg(uri: string): Promise<string> {
   return result.base64;
 }
 
+export async function asegurarBase64JpegTabla(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: 800 } }],
+    { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+  );
+  if (!result.base64) throw new Error('No se pudo convertir la imagen a JPEG');
+  return result.base64;
+}
+
 // Para códigos de barras: redimensiona a 1800px max (suficiente para leer dígitos impresos)
 // evitando que imágenes de galería de alta resolución superen el límite de memoria de la function.
 export async function asegurarBase64JpegBarras(uri: string): Promise<string> {

@@ -191,7 +191,7 @@ export async function leerEtiquetaNutricional(imagenBase64: string): Promise<Lee
     const result = await fn({ imagenBase64 });
     return result.data;
   } catch (error: any) {
-    console.error("Error al leer etiqueta:", error.code, error.message);
+    console.error("Error al leer tabla nutricional:", error.code, error.message);
     throw new Error(traducirErrorFirebase(error, "No se pudo leer la tabla nutricional."));
   }
 }

@@ -9,7 +9,7 @@ import {
   type Ingrediente,
 } from "@/utils/ingredientes";
 import { BarcodeScannerOverlay } from "@/components/BarcodeScannerOverlay";
-import { asegurarBase64Jpeg, asegurarBase64JpegBarras, seleccionarImagen } from "@/utils/image";
+import { asegurarBase64Jpeg, asegurarBase64JpegBarras, asegurarBase64JpegTabla, seleccionarImagen } from "@/utils/image";
 import * as ImagePicker from "expo-image-picker";
 import { buscarProductoPorEAN } from "@/utils/open-food-facts";
 import { leerEANDeImagen, leerEtiquetaNutricional, obtenerNutricionIngrediente } from "@/utils/openai";
@@ -81,7 +81,8 @@ export default function IngredientesScreen() {
   const [nuevoNombre, setNuevoNombre] = useState("");
   const [nuevoPeso, setNuevoPeso] = useState("");
   const [isAgregando, setIsAgregando] = useState(false);
-  const [isEscaneando, setIsEscaneando] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState<string | null>(null);
+  const isEscaneando = loadingMsg !== null;
   const [mostrarScanner, setMostrarScanner] = useState(false);
 
   const [mostrarFormAgregar, setMostrarFormAgregar] = useState(params.desdeManual === "true");
@@ -93,6 +94,10 @@ export default function IngredientesScreen() {
     // Only allow numeric input
     if (valor !== "" && !/^\d*\.?\d*$/.test(valor)) return;
     setIngredientes((prev) => prev.map((ing) => (ing.id === id ? { ...ing, peso: valor } : ing)));
+  };
+
+  const handleNombreChange = (id: string, valor: string) => {
+    setIngredientes((prev) => prev.map((ing) => (ing.id === id ? { ...ing, nombre: valor } : ing)));
   };
 
   const handleEliminar = (id: string) => {
@@ -139,7 +144,7 @@ export default function IngredientesScreen() {
 
   const agregarIngredienteDesdeEAN = async (ean: string) => {
     setMostrarScanner(false);
-    setIsEscaneando(true);
+    setLoadingMsg("Buscando producto en base de datos...");
     try {
       const producto = await buscarProductoPorEAN(ean);
       if (!producto) {
@@ -164,7 +169,7 @@ export default function IngredientesScreen() {
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo obtener el producto.");
     } finally {
-      setIsEscaneando(false);
+      setLoadingMsg(null);
     }
   };
 
@@ -183,7 +188,7 @@ export default function IngredientesScreen() {
 
     if (!uri) return;
 
-    setIsEscaneando(true);
+    setLoadingMsg("Leyendo código de barras con IA...");
     try {
       const imagenBase64 = await asegurarBase64JpegBarras(uri);
       const resultado = await leerEANDeImagen(imagenBase64);
@@ -193,13 +198,13 @@ export default function IngredientesScreen() {
           "Los dígitos no eran legibles. Intentá tomar la foto más cerca y con buena luz.",
           [{ text: "OK" }]
         );
-        setIsEscaneando(false);
+        setLoadingMsg(null);
         return;
       }
       await agregarIngredienteDesdeEAN(resultado.ean);
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo procesar la imagen.");
-      setIsEscaneando(false);
+      setLoadingMsg(null);
     }
   };
 
@@ -222,9 +227,9 @@ export default function IngredientesScreen() {
 
     if (!uri) return;
 
-    setIsEscaneando(true);
+    setLoadingMsg("Analizando tabla nutricional...");
     try {
-      const imagenBase64 = await asegurarBase64Jpeg(uri);
+      const imagenBase64 = await asegurarBase64JpegTabla(uri);
       const resultado = await leerEtiquetaNutricional(imagenBase64);
 
       if (!resultado.encontrado) {
@@ -250,7 +255,7 @@ export default function IngredientesScreen() {
     } catch (error: any) {
       Alert.alert("Error", error.message || "No se pudo procesar la imagen.");
     } finally {
-      setIsEscaneando(false);
+      setLoadingMsg(null);
     }
   };
 
@@ -460,9 +465,14 @@ export default function IngredientesScreen() {
                 <View key={ing.id} style={styles.ingredienteCard}>
                   {/* Name row */}
                   <View style={styles.ingredienteHeader}>
-                    <ThemedText style={styles.ingredienteNombre} lightColor={MetaFitColors.text.primary} numberOfLines={1}>
-                      {ing.nombre}
-                    </ThemedText>
+                    <TextInput
+                      style={styles.ingredienteNombreInput}
+                      value={ing.nombre}
+                      onChangeText={(v) => handleNombreChange(ing.id, v)}
+                      placeholder="Nombre del ingrediente"
+                      placeholderTextColor={MetaFitColors.text.tertiary}
+                      returnKeyType="done"
+                    />
                     <TouchableOpacity
                       onPress={() => handleEliminar(ing.id)}
                       style={styles.deleteButton}
@@ -534,7 +544,7 @@ export default function IngredientesScreen() {
             <View style={styles.escaneandoCard}>
               <ActivityIndicator size="small" color={MetaFitColors.calificacion.media} />
               <ThemedText style={styles.escaneandoText} lightColor={MetaFitColors.text.secondary}>
-                Analizando código de barras con IA...
+                {loadingMsg}
               </ThemedText>
             </View>
           )}
@@ -557,7 +567,7 @@ export default function IngredientesScreen() {
               <TouchableOpacity style={styles.labelButton} onPress={handleFotoEtiqueta} activeOpacity={0.75}>
                 <IconSymbol name="camera.viewfinder" size={18} color={MetaFitColors.button.primary} />
                 <ThemedText style={styles.labelButtonText} lightColor={MetaFitColors.button.primary}>
-                  Foto de etiqueta nutricional
+                  Foto de tabla nutricional
                 </ThemedText>
               </TouchableOpacity>
 
@@ -785,6 +795,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   ingredienteNombre: { fontSize: 15, fontWeight: "700", flex: 1 },
+  ingredienteNombreInput: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: MetaFitColors.text.primary,
+    flex: 1,
+    padding: 0,
+  },
   deleteButton: {
     width: 28,
     height: 28,
