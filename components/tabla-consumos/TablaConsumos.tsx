@@ -256,13 +256,15 @@ export function TablaConsumos({
                     )}
                   </View>
 
-                  {consumo.imagenUrl && (
-                    <Image
-                      source={{ uri: consumo.imagenUrl }}
-                      style={styles.thumbnail}
-                      contentFit="cover"
-                    />
-                  )}
+                  <View style={styles.thumbnailSlot}>
+                    {consumo.imagenUrl && (
+                      <Image
+                        source={{ uri: consumo.imagenUrl }}
+                        style={styles.thumbnail}
+                        contentFit="cover"
+                      />
+                    )}
+                  </View>
                 </View>
 
                 {/* Bottom: tipo + fecha + calificación */}
@@ -492,6 +494,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     lineHeight: 21,
+  },
+  thumbnailSlot: {
+    width: 56,
+    height: 56,
+    flexShrink: 0,
   },
   thumbnail: {
     width: 56,
