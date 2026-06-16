@@ -4,29 +4,29 @@ import { MetaFitColors } from "@/constants/theme";
 import { obtenerConsumosPorRango, type Consumo } from "@/utils/consumos";
 import { getNutritionalProfile } from "@/utils/nutritional-profile";
 import { analizarPatronAlimenticio, type AnalizarPatronResponse } from "@/utils/openai";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { Calendar, LocaleConfig } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type ModoPeriodo = "dia" | "7dias" | "30dias";
-type PickerActivo = "inicio" | "fin" | "dia" | null;
+LocaleConfig.locales["es"] = {
+  monthNames: ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"],
+  monthNamesShort: ["Ene.","Feb.","Mar.","Abr.","May.","Jun.","Jul.","Ago.","Sep.","Oct.","Nov.","Dic."],
+  dayNames: ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"],
+  dayNamesShort: ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],
+  today: "Hoy",
+};
+LocaleConfig.defaultLocale = "es";
 
-const MODOS: { key: ModoPeriodo; label: string }[] = [
-  { key: "dia",   label: "1 día" },
-  { key: "7dias", label: "7 días" },
-  { key: "30dias",label: "30 días" },
-];
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 const TIPO_CONFIG: Record<string, { emoji: string; color: string; bg: string }> = {
   Desayuno: { emoji: "☀️", color: "#C9943A", bg: "#FFF8EC" },
@@ -37,50 +37,119 @@ const TIPO_CONFIG: Record<string, { emoji: string; color: string; bg: string }> 
   Comida:   { emoji: "🍽️", color: "#6B7C8D", bg: "#F5F5F5" },
 };
 
+const CALENDAR_THEME = {
+  backgroundColor: "transparent",
+  calendarBackground: "transparent",
+  textSectionTitleColor: MetaFitColors.text.tertiary,
+  selectedDayBackgroundColor: MetaFitColors.button.primary,
+  selectedDayTextColor: "#fff",
+  todayTextColor: MetaFitColors.button.primary,
+  todayBackgroundColor: MetaFitColors.background.elevated,
+  dayTextColor: MetaFitColors.text.primary,
+  textDisabledColor: MetaFitColors.border.light,
+  arrowColor: MetaFitColors.button.primary,
+  monthTextColor: MetaFitColors.text.primary,
+  textMonthFontWeight: "700" as const,
+  textMonthFontSize: 15,
+  textDayFontSize: 14,
+  textDayFontWeight: "500" as const,
+  textDayHeaderFontSize: 11,
+  textDayHeaderFontWeight: "600" as const,
+};
+
+const QUICK_RANGES = [
+  { label: "Hoy",    days: 0 },
+  { label: "7 días", days: 6 },
+  { label: "30 días",days: 29 },
+];
+
 function getCalificacionBadge(cal: "Muy saludable" | "Equilibrada" | "Poco nutritiva") {
   if (cal === "Muy saludable") return { bg: "#F0FAF4", color: "#4A9E6B", label: "Muy saludable", score: 90 };
   if (cal === "Poco nutritiva") return { bg: "#FFF0F0", color: "#C94848", label: "Poco nutritiva", score: 30 };
   return { bg: "#FFF8EC", color: "#C9943A", label: "Equilibrada", score: 65 };
 }
 
-function formatDate(date: Date): string {
-  const d = date.getDate().toString().padStart(2, "0");
-  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+function strFromDate(date: Date): string {
   const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
+  const m = (date.getMonth() + 1).toString().padStart(2, "0");
+  const d = date.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
-function formatDateShort(date: Date): string {
-  const meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-  return `${date.getDate()} ${meses[date.getMonth()]}`;
+function dateFromStr(str: string): Date {
+  const [y, m, d] = str.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function formatDate(date: Date): string {
+  return `${date.getDate().toString().padStart(2,"0")}/${(date.getMonth()+1).toString().padStart(2,"0")}/${date.getFullYear()}`;
 }
 
 function startOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  const d = new Date(date); d.setHours(0, 0, 0, 0); return d;
 }
 
 function endOfDay(date: Date): Date {
-  const d = new Date(date);
-  d.setHours(23, 59, 59, 999);
-  return d;
+  const d = new Date(date); d.setHours(23, 59, 59, 999); return d;
 }
 
 function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
+  const d = new Date(); d.setDate(d.getDate() - n); return d;
 }
 
-function MacroPropBar({ carb, proteina, grasa }: { carb: number; proteina: number; grasa: number }) {
-  const cCal = carb * 4;
-  const pCal = proteina * 4;
-  const gCal = grasa * 9;
+function diffDays(start: Date, end: Date): number {
+  return Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+function isToday(date: Date): boolean {
+  const t = new Date();
+  return date.getDate() === t.getDate() && date.getMonth() === t.getMonth() && date.getFullYear() === t.getFullYear();
+}
+
+function isYesterday(date: Date): boolean {
+  const y = daysAgo(1);
+  return date.getDate() === y.getDate() && date.getMonth() === y.getMonth() && date.getFullYear() === y.getFullYear();
+}
+
+function formatShortDate(date: Date): string {
+  return `${date.getDate()} ${MESES[date.getMonth()]}`;
+}
+
+/** Build markedDates for react-native-calendars period marking */
+function buildMarkedDates(start: Date, end: Date) {
+  const marks: Record<string, any> = {};
+  const primary = MetaFitColors.button.primary;
+  const fill = "#B8D4E0";
+  const startStr = strFromDate(start);
+  const endStr = strFromDate(end);
+
+  if (startStr === endStr) {
+    marks[startStr] = { color: primary, textColor: "#fff", startingDay: true, endingDay: true };
+    return marks;
+  }
+
+  const cur = new Date(start);
+  while (cur <= end) {
+    const s = strFromDate(cur);
+    const isStart = s === startStr;
+    const isEnd = s === endStr;
+    marks[s] = {
+      color: isStart || isEnd ? primary : fill,
+      textColor: isStart || isEnd ? "#fff" : MetaFitColors.text.primary,
+      startingDay: isStart,
+      endingDay: isEnd,
+    };
+    cur.setDate(cur.getDate() + 1);
+  }
+  return marks;
+}
+
+function MacroPropBar({ carb, proteina, grasa, height = 4 }: { carb: number; proteina: number; grasa: number; height?: number }) {
+  const cCal = carb * 4, pCal = proteina * 4, gCal = grasa * 9;
   const total = cCal + pCal + gCal;
   if (total === 0) return null;
   return (
-    <View style={{ flexDirection: "row", height: 4, borderRadius: 2, overflow: "hidden", gap: 1.5 }}>
+    <View style={{ flexDirection: "row", height, borderRadius: 2, overflow: "hidden", gap: 1.5 }}>
       <View style={{ flex: pCal / total, backgroundColor: "#E8636A" }} />
       <View style={{ flex: cCal / total, backgroundColor: "#E8A542" }} />
       <View style={{ flex: gCal / total, backgroundColor: MetaFitColors.button.primary }} />
@@ -90,59 +159,63 @@ function MacroPropBar({ carb, proteina, grasa }: { carb: number; proteina: numbe
 
 export function AnalisisScreen() {
   const scrollViewRef = useRef<ScrollView>(null);
-  // Initial mode is "dia" → index 0
-  const indicatorAnim = useRef(new Animated.Value(0)).current;
 
-  const [modoPeriodo, setModoPeriodo] = useState<ModoPeriodo>("dia");
-  const [fechaInicio, setFechaInicio] = useState<Date>(() => startOfDay(new Date()));
-  const [fechaFin, setFechaFin] = useState<Date>(() => endOfDay(new Date()));
-  const [diaSeleccionado, setDiaSeleccionado] = useState<Date>(new Date());
-  const [pickerActivo, setPickerActivo] = useState<PickerActivo>(null);
-  const [tempDate, setTempDate] = useState<Date>(new Date());
+  const today = new Date();
+  const [rangeStart, setRangeStart] = useState<Date>(today);
+  const [rangeEnd, setRangeEnd]     = useState<Date>(today);
+  const [selPhase, setSelPhase]     = useState<"start" | "end">("start");
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarKey, setCalendarKey] = useState(() => `${strFromDate(today)}-0`);
+  const [activeQuickDays, setActiveQuickDays] = useState<number | null>(0);
 
-  const [consumos, setConsumos] = useState<Consumo[]>([]);
+  const [consumos, setConsumos]               = useState<Consumo[]>([]);
   const [isLoadingConsumos, setIsLoadingConsumos] = useState(false);
-  const [buscado, setBuscado] = useState(false);
+  const [buscado, setBuscado]                 = useState(false);
 
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set());
-  const [isAnalizando, setIsAnalizando] = useState(false);
-  const [resultado, setResultado] = useState<AnalizarPatronResponse | null>(null);
+  const [isAnalizando, setIsAnalizando]   = useState(false);
+  const [resultado, setResultado]         = useState<AnalizarPatronResponse | null>(null);
   const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
 
-  const animateToIndex = useCallback((idx: number) => {
-    Animated.spring(indicatorAnim, {
-      toValue: idx,
-      useNativeDriver: false,
-      tension: 130,
-      friction: 16,
-    }).start();
-  }, [indicatorAnim]);
+  // ── Range selection ──────────────────────────────────────────────────
+  const applyQuickRange = (daysBack: number) => {
+    const end = new Date();
+    const start = daysBack === 0 ? new Date() : daysAgo(daysBack);
+    setRangeStart(start);
+    setRangeEnd(end);
+    setSelPhase("start");
+    setActiveQuickDays(daysBack);
+    setCalendarKey(`${strFromDate(end)}-${Date.now()}`); // always unique → always remounts at end month
+  };
 
-  const aplicarModo = useCallback((modo: ModoPeriodo, idx: number) => {
-    setModoPeriodo(modo);
-    setResultado(null);
-    setErrorAnalisis(null);
-    animateToIndex(idx);
-
-    if (modo === "dia") {
-      // Open day picker — don't change dates yet
-      setTempDate(diaSeleccionado);
-      setPickerActivo("dia");
-    } else if (modo === "7dias") {
-      setFechaInicio(daysAgo(6));
-      setFechaFin(new Date());
-    } else if (modo === "30dias") {
-      setFechaInicio(daysAgo(29));
-      setFechaFin(new Date());
+  const handleCalendarDayPress = useCallback(({ dateString }: { dateString: string }) => {
+    const date = dateFromStr(dateString);
+    if (selPhase === "start") {
+      setRangeStart(date);
+      setRangeEnd(date);
+      setSelPhase("end");
+      setActiveQuickDays(null); // manual selection clears chip highlight
+    } else {
+      if (date < rangeStart) {
+        setRangeStart(date);
+        setRangeEnd(date);
+        // stay in "end" phase so user picks end next
+      } else {
+        setRangeEnd(date);
+        setSelPhase("start");
+        // navigate to the month of the end date so the full range is visible
+        setCalendarKey(`${dateString}-${Date.now()}`);
+      }
     }
-  }, [animateToIndex, diaSeleccionado]);
+  }, [selPhase, rangeStart]);
 
+  // ── Data loading ─────────────────────────────────────────────────────
   const cargarConsumos = useCallback(async () => {
     setIsLoadingConsumos(true);
     setResultado(null);
     setErrorAnalisis(null);
     try {
-      const data = await obtenerConsumosPorRango(startOfDay(fechaInicio), fechaFin);
+      const data = await obtenerConsumosPorRango(startOfDay(rangeStart), endOfDay(rangeEnd));
       setConsumos(data);
       setSeleccionados(new Set(data.map((c) => c.id)));
       setBuscado(true);
@@ -151,13 +224,12 @@ export function AnalisisScreen() {
     } finally {
       setIsLoadingConsumos(false);
     }
-  }, [fechaInicio, fechaFin]);
+  }, [rangeStart, rangeEnd]);
 
   const toggleSeleccion = (id: string) => {
     setSeleccionados((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
   };
@@ -186,61 +258,47 @@ export function AnalisisScreen() {
     setResultado(null);
     try {
       const perfil = await getNutritionalProfile();
-      const rangoStr = `${formatDate(fechaInicio)} – ${formatDate(fechaFin)}`;
+      const rangoStr = `${formatDate(rangeStart)} – ${formatDate(rangeEnd)}`;
       const data = await analizarPatronAlimenticio(consumosSeleccionados, rangoStr, perfil ?? undefined);
       setResultado(data);
       setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 200);
     } catch (err: any) {
-      setErrorAnalisis(err.message || "Error al analizar el patrón alimenticio");
+      setErrorAnalisis(err.message || "Error al analizar");
     } finally {
       setIsAnalizando(false);
     }
   };
 
-  const handleOpenPicker = (cual: "inicio" | "fin") => {
-    setTempDate(cual === "inicio" ? fechaInicio : fechaFin);
-    setPickerActivo(cual);
-  };
+  // ── Derived display values ───────────────────────────────────────────
+  const todayStr   = strFromDate(new Date());
+  const numDias    = diffDays(rangeStart, rangeEnd);
+  const isRango    = numDias > 1;
+  const markedDates = buildMarkedDates(rangeStart, rangeEnd);
 
-  const handlePickerChange = (_: any, date?: Date) => {
-    if (Platform.OS === "android") {
-      setPickerActivo(null);
-      if (date) {
-        if (pickerActivo === "dia") {
-          setDiaSeleccionado(date);
-          setFechaInicio(date);
-          setFechaFin(date);
-        } else if (pickerActivo === "inicio") setFechaInicio(date);
-        else if (pickerActivo === "fin") setFechaFin(date);
-      }
-    } else {
-      if (date) setTempDate(date);
-    }
-  };
+  // Date display label
+  const startSameAsEnd = strFromDate(rangeStart) === strFromDate(rangeEnd);
+  let dateLabel: string;
+  let dateSub: string | null = null;
 
-  const handleAcceptDate = () => {
-    if (pickerActivo === "dia") {
-      setDiaSeleccionado(tempDate);
-      setFechaInicio(startOfDay(tempDate));
-      setFechaFin(endOfDay(tempDate));
-    } else if (pickerActivo === "inicio") {
-      setFechaInicio(tempDate);
-    } else if (pickerActivo === "fin") {
-      setFechaFin(tempDate);
-    }
-    setPickerActivo(null);
-  };
+  if (startSameAsEnd) {
+    if (isToday(rangeStart))     { dateLabel = "Hoy";  dateSub = formatShortDate(rangeStart); }
+    else if (isYesterday(rangeStart)) { dateLabel = "Ayer"; dateSub = formatShortDate(rangeStart); }
+    else { dateLabel = formatShortDate(rangeStart); dateSub = String(rangeStart.getFullYear()); }
+  } else {
+    dateLabel = `${formatShortDate(rangeStart)}  —  ${formatShortDate(rangeEnd)}`;
+    dateSub   = `${numDias} días`;
+  }
 
-  const handleCancelDate = () => {
-    // If user cancels "dia" picker without ever picking, revert segment to previous
-    if (pickerActivo === "dia" && modoPeriodo === "dia") {
-      // Stay on dia mode but keep previous diaSeleccionado
-    }
-    setPickerActivo(null);
-  };
+  // Footer smart values
+  const avgKcal = isRango && numDias > 0 ? totales.energia / numDias : totales.energia;
+  const avgCarb = isRango && numDias > 0 ? totales.carb / numDias : totales.carb;
+  const avgProt = isRango && numDias > 0 ? totales.proteina / numDias : totales.proteina;
+  const avgGras = isRango && numDias > 0 ? totales.grasa / numDias : totales.grasa;
 
-  // Label shown inside the "Día" segment (shows chosen date when one is set)
-  const diaSegmentLabel = modoPeriodo === "dia" ? formatDateShort(diaSeleccionado) : "Día";
+  // Phase hint
+  const phaseHint = selPhase === "start"
+    ? "Toca para seleccionar inicio del período"
+    : "Ahora selecciona el fin del período";
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top"]}>
@@ -256,151 +314,97 @@ export function AnalisisScreen() {
             Análisis
           </ThemedText>
           <ThemedText style={styles.pageSubtitle} lightColor={MetaFitColors.text.secondary}>
-            Comprende tus hábitos alimenticios
+            Selecciona un período y analiza tus hábitos
           </ThemedText>
         </View>
 
-        {/* ── Segmented Period Control (3 segments) ── */}
-        <View style={styles.segmentTrack}>
-          <Animated.View
-            style={[
-              styles.segmentIndicator,
-              {
-                left: indicatorAnim.interpolate({
-                  inputRange: [0, 1, 2],
-                  outputRange: ["2.5%", "35.5%", "68.2%"],
-                }),
-              },
-            ]}
-          />
-          {MODOS.map((modo, idx) => {
-            const isActive = modoPeriodo === modo.key;
-            const label = modo.key === "dia" ? diaSegmentLabel : modo.label;
-            return (
-              <TouchableOpacity
-                key={modo.key}
-                style={styles.segmentItem}
-                onPress={() => aplicarModo(modo.key, idx)}
-                activeOpacity={0.7}
-              >
-                <ThemedText
-                  style={[styles.segmentLabel, isActive && styles.segmentLabelActive]}
-                  lightColor={isActive ? "#fff" : MetaFitColors.text.secondary}
-                  numberOfLines={1}
-                >
-                  {label}
-                </ThemedText>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ── Date Section ── */}
-        <View style={styles.dateSection}>
-          {modoPeriodo === "dia" ? (
-            /* Single-day picker button */
-            <TouchableOpacity
-              style={styles.diaButton}
-              onPress={() => {
-                setTempDate(diaSeleccionado);
-                setPickerActivo("dia");
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.diaButtonInner}>
-                <View>
-                  <ThemedText style={styles.dateButtonLabel} lightColor={MetaFitColors.text.tertiary}>
-                    Día seleccionado
-                  </ThemedText>
-                  <ThemedText style={styles.diaButtonValue} lightColor={MetaFitColors.text.primary}>
-                    {formatDateShort(diaSeleccionado)}
-                  </ThemedText>
-                </View>
-                <View style={styles.diaButtonIcon}>
-                  <IconSymbol name="calendar" size={18} color={MetaFitColors.button.primary} />
-                </View>
-              </View>
-            </TouchableOpacity>
-          ) : (
-            /* Date range (from → to) */
-            <View style={styles.dateRow}>
-              <TouchableOpacity style={styles.dateButton} onPress={() => handleOpenPicker("inicio")} activeOpacity={0.8}>
-                <ThemedText style={styles.dateButtonLabel} lightColor={MetaFitColors.text.tertiary}>
-                  Desde
-                </ThemedText>
-                <ThemedText style={styles.dateButtonValue} lightColor={MetaFitColors.text.primary}>
-                  {formatDateShort(fechaInicio)}
-                </ThemedText>
-              </TouchableOpacity>
-
-              <View style={styles.dateSepLine}>
-                <View style={styles.dateSepDot} />
-                <View style={styles.dateSepTrack} />
-                <View style={styles.dateSepDot} />
-              </View>
-
-              <TouchableOpacity style={styles.dateButton} onPress={() => handleOpenPicker("fin")} activeOpacity={0.8}>
-                <ThemedText style={styles.dateButtonLabel} lightColor={MetaFitColors.text.tertiary}>
-                  Hasta
-                </ThemedText>
-                <ThemedText style={styles.dateButtonValue} lightColor={MetaFitColors.text.primary}>
-                  {formatDateShort(fechaFin)}
-                </ThemedText>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <TouchableOpacity style={styles.buscarBtn} onPress={cargarConsumos} activeOpacity={0.8}>
-            <IconSymbol name="magnifyingglass" size={15} color="#fff" />
-            <ThemedText style={styles.buscarBtnText} lightColor="#fff">
-              Buscar registros
-            </ThemedText>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Date Pickers ── */}
-        {pickerActivo !== null && Platform.OS === "ios" && (
-          <View style={styles.iosPickerContainer}>
-            <View style={styles.iosPickerHeader}>
-              <TouchableOpacity onPress={handleCancelDate} style={styles.iosPickerBtn}>
-                <ThemedText style={styles.iosPickerCancelText} lightColor={MetaFitColors.text.secondary}>
-                  Cancelar
-                </ThemedText>
-              </TouchableOpacity>
-              <ThemedText style={styles.iosPickerTitle} lightColor={MetaFitColors.text.primary}>
-                {pickerActivo === "dia"
-                  ? "Elegir día"
-                  : pickerActivo === "inicio"
-                  ? "Fecha inicio"
-                  : "Fecha fin"}
+        {/* ── Date picker — unified card ── */}
+        <View style={styles.pickerContainer}>
+          {/* Tappable header */}
+          <TouchableOpacity
+            style={styles.pickerHeader}
+            onPress={() => setShowCalendar((v) => !v)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.dateRangeLeft}>
+              <ThemedText style={styles.dateRangeMain} lightColor={MetaFitColors.text.primary}>
+                {dateLabel}
               </ThemedText>
-              <TouchableOpacity onPress={handleAcceptDate} style={styles.iosPickerBtn}>
-                <ThemedText style={styles.iosPickerAcceptText} lightColor={MetaFitColors.button.primary}>
-                  Aceptar
+              {dateSub && (
+                <ThemedText style={styles.dateRangeSub} lightColor={MetaFitColors.text.secondary}>
+                  {dateSub}
                 </ThemedText>
-              </TouchableOpacity>
+              )}
             </View>
-            <DateTimePicker
-              value={tempDate}
-              mode="date"
-              display="spinner"
-              onChange={handlePickerChange}
-              maximumDate={pickerActivo === "fin" ? new Date() : pickerActivo === "dia" ? new Date() : fechaFin}
-              minimumDate={pickerActivo === "fin" ? fechaInicio : undefined}
-              style={styles.iosDatePicker}
-            />
-          </View>
-        )}
-        {pickerActivo !== null && Platform.OS === "android" && (
-          <DateTimePicker
-            value={pickerActivo === "inicio" ? fechaInicio : pickerActivo === "dia" ? diaSeleccionado : fechaFin}
-            mode="date"
-            display="default"
-            onChange={handlePickerChange}
-            maximumDate={pickerActivo === "fin" ? new Date() : pickerActivo === "dia" ? new Date() : fechaFin}
-            minimumDate={pickerActivo === "fin" ? fechaInicio : undefined}
-          />
-        )}
+            <View style={styles.dateRangeToggle}>
+              <IconSymbol
+                name={showCalendar ? "chevron.up" : "chevron.down"}
+                size={14}
+                color={MetaFitColors.button.primary}
+              />
+            </View>
+          </TouchableOpacity>
+
+          {/* Expandable body — same card, no seam */}
+          {showCalendar && (
+            <>
+              <View style={styles.pickerDivider} />
+
+              {/* Quick range chips */}
+              <View style={styles.quickChips}>
+                {QUICK_RANGES.map((q) => {
+                  const isActive = activeQuickDays === q.days;
+                  return (
+                    <TouchableOpacity
+                      key={q.label}
+                      style={[styles.quickChip, isActive && styles.quickChipActive]}
+                      onPress={() => applyQuickRange(q.days)}
+                      activeOpacity={0.75}
+                    >
+                      <ThemedText
+                        style={[styles.quickChipText, isActive && styles.quickChipTextActive]}
+                        lightColor={isActive ? "#fff" : MetaFitColors.text.secondary}
+                      >
+                        {q.label}
+                      </ThemedText>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Phase hint */}
+              <View style={styles.phaseHintRow}>
+                <View style={[styles.phaseDot, selPhase === "end" && styles.phaseDotActive]} />
+                <ThemedText style={styles.phaseHintText} lightColor={MetaFitColors.text.tertiary}>
+                  {phaseHint}
+                </ThemedText>
+              </View>
+
+              <Calendar
+                key={calendarKey}
+                current={strFromDate(rangeEnd)}
+                onDayPress={handleCalendarDayPress}
+                maxDate={todayStr}
+                markingType="period"
+                markedDates={markedDates}
+                enableSwipeMonths
+                theme={CALENDAR_THEME}
+              />
+            </>
+          )}
+        </View>
+
+        {/* ── Search button ── */}
+        <TouchableOpacity
+          style={styles.buscarBtn}
+          onPress={() => { setShowCalendar(false); cargarConsumos(); }}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="magnifyingglass" size={15} color="#fff" />
+          <ThemedText style={styles.buscarBtnText} lightColor="#fff">
+            Buscar registros
+          </ThemedText>
+        </TouchableOpacity>
 
         {/* ── Loading ── */}
         {isLoadingConsumos && (
@@ -453,7 +457,9 @@ export function AnalisisScreen() {
                 const tipo = consumo.tipoComida || "Comida";
                 const config = TIPO_CONFIG[tipo] ?? TIPO_CONFIG["Comida"];
                 const kcal = consumo.energia ? Math.round(parseFloat(consumo.energia)) : null;
-                const fecha = consumo.fechaCreacion ? formatDateShort(new Date(consumo.fechaCreacion)) : "";
+                const fecha = consumo.fechaCreacion
+                  ? formatShortDate(new Date(consumo.fechaCreacion))
+                  : "";
 
                 return (
                   <TouchableOpacity
@@ -467,7 +473,6 @@ export function AnalisisScreen() {
                     activeOpacity={0.75}
                   >
                     <View style={[styles.typeAccent, { backgroundColor: config.color }]} />
-
                     {consumo.imagenUrl ? (
                       <Image source={{ uri: consumo.imagenUrl }} style={styles.consumoThumb} contentFit="cover" />
                     ) : (
@@ -475,7 +480,6 @@ export function AnalisisScreen() {
                         <ThemedText style={styles.consumoEmoji}>{config.emoji}</ThemedText>
                       </View>
                     )}
-
                     <View style={styles.consumoInfo}>
                       <ThemedText style={styles.consumoNombre} lightColor={MetaFitColors.text.primary} numberOfLines={1}>
                         {consumo.nombre || tipo}
@@ -484,7 +488,6 @@ export function AnalisisScreen() {
                         {tipo}  ·  {fecha}
                       </ThemedText>
                     </View>
-
                     <View style={styles.consumoRight}>
                       {kcal !== null && (
                         <Text style={styles.consumoKcal}>
@@ -516,9 +519,7 @@ export function AnalisisScreen() {
         {/* ── Error ── */}
         {errorAnalisis && (
           <View style={styles.errorCard}>
-            <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>
-              {errorAnalisis}
-            </ThemedText>
+            <ThemedText style={styles.errorText} lightColor={MetaFitColors.error}>{errorAnalisis}</ThemedText>
           </View>
         )}
 
@@ -603,19 +604,29 @@ export function AnalisisScreen() {
         )}
       </ScrollView>
 
-      {/* ── Sticky Footer ── */}
+      {/* ── Smart Sticky Footer ── */}
       {consumos.length > 0 && (
         <View style={styles.stickyBar}>
           <View style={styles.stickyBarInfo}>
-            <MacroPropBar carb={totales.carb} proteina={totales.proteina} grasa={totales.grasa} />
+            <MacroPropBar carb={avgCarb} proteina={avgProt} grasa={avgGras} />
             <View style={styles.stickyBarRow}>
               <ThemedText style={styles.stickyBarKcal} lightColor={MetaFitColors.button.primary}>
-                {Math.round(totales.energia)} kcal
+                {isRango
+                  ? `~${Math.round(avgKcal)} kcal/día`
+                  : `${Math.round(totales.energia)} kcal`}
               </ThemedText>
-              <ThemedText style={styles.stickyBarMacros} lightColor={MetaFitColors.text.secondary}>
-                C {Math.round(totales.carb)}g · P {Math.round(totales.proteina)}g · G {Math.round(totales.grasa)}g
-              </ThemedText>
+              {isRango && (
+                <View style={styles.stickyRangePill}>
+                  <ThemedText style={styles.stickyRangePillText} lightColor={MetaFitColors.button.primary}>
+                    {numDias} días
+                  </ThemedText>
+                </View>
+              )}
             </View>
+            <ThemedText style={styles.stickyBarMacros} lightColor={MetaFitColors.text.secondary}>
+              {isRango ? "Promedio · " : ""}
+              P {Math.round(avgProt)}g · C {Math.round(avgCarb)}g · G {Math.round(avgGras)}g
+            </ThemedText>
             <ThemedText style={styles.stickyBarCount} lightColor={MetaFitColors.text.tertiary}>
               {seleccionados.size} de {consumos.length} registros seleccionados
             </ThemedText>
@@ -644,82 +655,87 @@ export function AnalisisScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: MetaFitColors.background.white },
   scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 150 },
+  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 160 },
 
   // ── Header ──
-  pageHeader: { marginBottom: 22 },
+  pageHeader: { marginBottom: 20 },
   pageTitle: { fontSize: 34, fontWeight: "800", letterSpacing: -0.8, lineHeight: 42, marginBottom: 2 },
   pageSubtitle: { fontSize: 14 },
 
-  // ── Segmented Control (4 segments) ──
-  segmentTrack: {
+  // ── Unified date picker card ──
+  pickerContainer: {
+    backgroundColor: MetaFitColors.background.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+    marginBottom: 10,
+    overflow: "hidden",
+  },
+  pickerHeader: {
     flexDirection: "row",
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 14,
-    padding: 4,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    height: 46,
-    position: "relative",
-    marginBottom: 18,
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
   },
-  segmentIndicator: {
-    position: "absolute",
-    top: 4,
-    bottom: 4,
-    width: "30%",
-    backgroundColor: MetaFitColors.button.primary,
+  pickerDivider: {
+    height: 1,
+    backgroundColor: MetaFitColors.border.divider,
+  },
+  dateRangeLeft: { flex: 1, gap: 2 },
+  dateRangeMain: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  dateRangeSub:  { fontSize: 13, fontWeight: "500" },
+  dateRangeToggle: {
+    width: 32,
+    height: 32,
     borderRadius: 10,
-    shadowColor: MetaFitColors.button.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.28,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  segmentItem: { flex: 1, alignItems: "center", justifyContent: "center", zIndex: 1 },
-  segmentLabel: { fontSize: 14, fontWeight: "600", letterSpacing: 0.1 },
-  segmentLabelActive: { fontWeight: "700" },
-
-  // ── Date Section ──
-  dateSection: { gap: 12, marginBottom: 24 },
-  dateRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  dateButton: {
-    flex: 1,
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    gap: 2,
-  },
-  dateButtonLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 0.7, textTransform: "uppercase" },
-  dateButtonValue: { fontSize: 18, fontWeight: "700", letterSpacing: -0.3 },
-
-  // Single-day button
-  diaButton: {
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: MetaFitColors.border.accent,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-  },
-  diaButtonInner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  diaButtonValue: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, marginTop: 2 },
-  diaButtonIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
     backgroundColor: MetaFitColors.background.elevated,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  dateSepLine: { flexDirection: "row", alignItems: "center", gap: 4, paddingTop: 12 },
-  dateSepDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: MetaFitColors.border.accent },
-  dateSepTrack: { width: 12, height: 1.5, backgroundColor: MetaFitColors.border.accent },
+  // Quick chips
+  quickChips: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  quickChip: {
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  quickChipActive: {
+    backgroundColor: MetaFitColors.button.primary,
+    borderColor: MetaFitColors.button.primary,
+  },
+  quickChipText: { fontSize: 12, fontWeight: "600" },
+  quickChipTextActive: { color: "#fff" },
 
+  // Phase hint
+  phaseHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  phaseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: MetaFitColors.border.accent,
+  },
+  phaseDotActive: {
+    backgroundColor: MetaFitColors.button.primary,
+  },
+  phaseHintText: { fontSize: 12, fontWeight: "500" },
+
+  // ── Search button ──
   buscarBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -728,37 +744,14 @@ const styles = StyleSheet.create({
     backgroundColor: MetaFitColors.button.primary,
     paddingVertical: 14,
     borderRadius: 14,
+    marginBottom: 24,
     shadowColor: MetaFitColors.button.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.22,
     shadowRadius: 8,
     elevation: 3,
   },
-  buscarBtnText: { fontSize: 15, fontWeight: "700", letterSpacing: 0.1 },
-
-  // ── iOS Picker ──
-  iosPickerContainer: {
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  iosPickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: MetaFitColors.border.light,
-  },
-  iosPickerTitle: { fontSize: 15, fontWeight: "600" },
-  iosPickerBtn: { paddingVertical: 4, paddingHorizontal: 4 },
-  iosPickerCancelText: { fontSize: 15, fontWeight: "500" },
-  iosPickerAcceptText: { fontSize: 15, fontWeight: "700" },
-  iosDatePicker: { height: 200 },
+  buscarBtnText: { fontSize: 15, fontWeight: "700" },
 
   // ── Loading / Empty ──
   centered: { alignItems: "center", paddingVertical: 40, gap: 12 },
@@ -777,7 +770,7 @@ const styles = StyleSheet.create({
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
 
   // ── Lista ──
-  listaSection: { gap: 12 },
+  listaSection: { gap: 12, marginBottom: 16 },
   listaSectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   listaHeaderLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   sectionTitle: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
@@ -836,13 +829,12 @@ const styles = StyleSheet.create({
   // ── Error ──
   errorCard: {
     backgroundColor: "#FFF0F0", borderRadius: 14,
-    borderWidth: 1, borderColor: "#F5C6C6",
-    padding: 16, marginTop: 16,
+    borderWidth: 1, borderColor: "#F5C6C6", padding: 16, marginTop: 16,
   },
   errorText: { fontSize: 14, lineHeight: 20 },
 
   // ── Resultado ──
-  resultadoSection: { marginTop: 24, gap: 12 },
+  resultadoSection: { marginTop: 8, gap: 12 },
   calHeader: { borderRadius: 16, padding: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   calHeaderLeft: { gap: 4 },
   calHeaderLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" },
@@ -856,16 +848,13 @@ const styles = StyleSheet.create({
   calScoreMax: { fontSize: 12, fontWeight: "600", color: MetaFitColors.text.tertiary },
   analisisCard: {
     backgroundColor: MetaFitColors.background.card,
-    borderRadius: 16, borderWidth: 1,
-    borderColor: MetaFitColors.border.light, padding: 18,
+    borderRadius: 16, borderWidth: 1, borderColor: MetaFitColors.border.light, padding: 18,
   },
   analisisQuoteChar: { fontSize: 40, lineHeight: 32, fontWeight: "900", color: MetaFitColors.border.accent, marginBottom: 6 },
   analisisTexto: { fontSize: 14, lineHeight: 22 },
   resumenBloque: {
     backgroundColor: MetaFitColors.background.card,
-    borderRadius: 16, borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    padding: 16, gap: 10,
+    borderRadius: 16, borderWidth: 1, borderColor: MetaFitColors.border.light, padding: 16, gap: 10,
   },
   resumenBloqueHeader: { borderLeftWidth: 3, paddingLeft: 10, marginBottom: 2 },
   resumenBloqueTitle: { fontSize: 11, fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.6 },
@@ -879,7 +868,7 @@ const styles = StyleSheet.create({
   },
   cerrarBtnText: { fontSize: 14, fontWeight: "600" },
 
-  // ── Sticky Footer ──
+  // ── Smart Sticky Footer ──
   stickyBar: {
     position: "absolute", bottom: 0, left: 0, right: 0,
     backgroundColor: MetaFitColors.background.card,
@@ -891,8 +880,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 16, elevation: 10,
   },
   stickyBarInfo: { flex: 1, gap: 5 },
-  stickyBarRow: { flexDirection: "row", alignItems: "baseline", gap: 8, marginTop: 2 },
-  stickyBarKcal: { fontSize: 20, fontWeight: "800", letterSpacing: -0.5 },
+  stickyBarRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  stickyBarKcal: { fontSize: 19, fontWeight: "800", letterSpacing: -0.5 },
+  stickyRangePill: {
+    backgroundColor: MetaFitColors.background.elevated,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+  },
+  stickyRangePillText: { fontSize: 11, fontWeight: "700" },
   stickyBarMacros: { fontSize: 11, fontWeight: "600" },
   stickyBarCount: { fontSize: 11 },
   analizarBtn: {
