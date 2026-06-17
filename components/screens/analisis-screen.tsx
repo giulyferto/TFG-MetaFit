@@ -455,10 +455,11 @@ export function AnalisisScreen() {
                   </ThemedText>
                 </View>
               </View>
-              <TouchableOpacity onPress={toggleTodos} activeOpacity={0.7}>
-                <ThemedText style={styles.toggleAllText} lightColor={MetaFitColors.button.primary}>
-                  {seleccionados.size === consumos.length ? "Ninguno" : "Todos"}
-                </ThemedText>
+              <TouchableOpacity onPress={toggleTodos} activeOpacity={0.7} style={styles.toggleAllCircle}>
+                <View style={[
+                  styles.toggleAllInner,
+                  seleccionados.size === consumos.length && styles.toggleAllInnerFull,
+                ]} />
               </TouchableOpacity>
             </View>
 
@@ -796,7 +797,24 @@ const styles = StyleSheet.create({
     borderColor: MetaFitColors.border.light,
   },
   countPillText: { fontSize: 12, fontWeight: "700" },
-  toggleAllText: { fontSize: 13, fontWeight: "700" },
+  toggleAllCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: MetaFitColors.button.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleAllInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "transparent",
+  },
+  toggleAllInnerFull: {
+    backgroundColor: MetaFitColors.button.primary,
+  },
 
   cardsList: {
     borderRadius: 16,
