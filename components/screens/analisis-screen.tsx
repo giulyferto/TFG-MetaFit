@@ -64,9 +64,9 @@ const QUICK_RANGES = [
 ];
 
 function getCalificacionBadge(cal: "Muy saludable" | "Equilibrada" | "Poco nutritiva") {
-  if (cal === "Muy saludable") return { bg: "#F0FAF4", color: "#4A9E6B", label: "Muy saludable", score: 90 };
-  if (cal === "Poco nutritiva") return { bg: "#FFF0F0", color: "#C94848", label: "Poco nutritiva", score: 30 };
-  return { bg: "#FFF8EC", color: "#C9943A", label: "Equilibrada", score: 65 };
+  if (cal === "Muy saludable") return { bg: "#F0FAF4", color: "#4A9E6B", label: "Muy saludable" };
+  if (cal === "Poco nutritiva") return { bg: "#FFF0F0", color: "#C94848", label: "Poco nutritiva" };
+  return { bg: "#FFF8EC", color: "#C9943A", label: "Equilibrada" };
 }
 
 function strFromDate(date: Date): string {
@@ -551,10 +551,6 @@ export function AnalisisScreen() {
                       {badge.label}
                     </ThemedText>
                   </View>
-                  <View style={[styles.calScoreBadge, { borderColor: badge.color + "44" }]}>
-                    <Text style={[styles.calScoreNumber, { color: badge.color }]}>{badge.score}</Text>
-                    <Text style={styles.calScoreMax}>/100</Text>
-                  </View>
                 </View>
               );
             })()}
@@ -870,13 +866,6 @@ const styles = StyleSheet.create({
   calHeaderLeft: { gap: 4 },
   calHeaderLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase" },
   calHeaderValue: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
-  calScoreBadge: {
-    flexDirection: "row", alignItems: "baseline",
-    borderWidth: 1.5, borderRadius: 14,
-    paddingHorizontal: 12, paddingVertical: 8, gap: 1,
-  },
-  calScoreNumber: { fontSize: 26, fontWeight: "900", letterSpacing: -0.5 },
-  calScoreMax: { fontSize: 12, fontWeight: "600", color: MetaFitColors.text.tertiary },
   analisisCard: {
     backgroundColor: MetaFitColors.background.card,
     borderRadius: 16, borderWidth: 1, borderColor: MetaFitColors.border.light, padding: 18,

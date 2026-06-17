@@ -711,6 +711,16 @@ function construirPromptPatron(
     if (perfil.restricciones?.length) prompt += `- Restricciones: ${perfil.restricciones.join(", ")}\n`;
   }
 
+  if (perfil?.preferenciaNutricional || perfil?.restricciones?.length) {
+    prompt += `\n**IMPORTANTE — Respetar siempre el perfil del usuario:**\n`;
+    if (perfil.preferenciaNutricional) {
+      prompt += `- El usuario sigue una dieta "${perfil.preferenciaNutricional}". Todos los puntos fuertes, débiles y recomendaciones DEBEN ser coherentes con esta preferencia. Nunca marcar como punto fuerte un alimento incompatible, ni recomendar alimentos que la contradigan.\n`;
+    }
+    if (perfil.restricciones?.length) {
+      prompt += `- Restricciones estrictas: ${perfil.restricciones.join(", ")}. No mencionar ni sugerir ninguno de estos alimentos en ninguna sección.\n`;
+    }
+  }
+
   prompt += `
 Respondé ÚNICAMENTE con el siguiente JSON (sin texto antes ni después):
 {
@@ -727,6 +737,7 @@ Reglas:
 - "analisis": texto corrido, sin listas, máximo 250 palabras
 - Cada lista de resumen: entre 2 y 4 ítems concisos
 - "calificacionGeneral": SOLO uno de esos tres valores exactos entre corchetes
+- Respetar estrictamente la preferencia nutricional y restricciones del perfil en TODAS las secciones
 `;
   return prompt;
 }
