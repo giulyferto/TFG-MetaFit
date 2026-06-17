@@ -177,39 +177,15 @@ export function AnalisisScreen() {
   const [resultado, setResultado]         = useState<AnalizarPatronResponse | null>(null);
   const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
 
-  // ── Range selection ──────────────────────────────────────────────────
-  const applyQuickRange = (daysBack: number) => {
-    const end = new Date();
-    const start = daysBack === 0 ? new Date() : daysAgo(daysBack);
-    setRangeStart(start);
-    setRangeEnd(end);
-    setSelPhase("start");
-    setActiveQuickDays(daysBack);
-    setCalendarKey(`${strFromDate(end)}-${Date.now()}`); // always unique → always remounts at end month
-  };
-
-  const handleCalendarDayPress = useCallback(({ dateString }: { dateString: string }) => {
-    const date = dateFromStr(dateString);
-    if (selPhase === "start") {
-      setRangeStart(date);
-      setRangeEnd(date);
-      setSelPhase("end");
-      setActiveQuickDays(null); // manual selection clears chip highlight
-    } else {
-      if (date < rangeStart) {
-        setRangeStart(date);
-        setRangeEnd(date);
-        // stay in "end" phase so user picks end next
-      } else {
-        setRangeEnd(date);
-        setSelPhase("start");
-        // navigate to the month of the end date so the full range is visible
-        setCalendarKey(`${dateString}-${Date.now()}`);
-      }
-    }
-  }, [selPhase, rangeStart]);
-
   // ── Data loading ─────────────────────────────────────────────────────
+  const limpiarResultados = useCallback(() => {
+    setConsumos([]);
+    setSeleccionados(new Set());
+    setResultado(null);
+    setErrorAnalisis(null);
+    setBuscado(false);
+  }, []);
+
   const cargarConsumos = useCallback(async () => {
     setIsLoadingConsumos(true);
     setResultado(null);
@@ -225,6 +201,37 @@ export function AnalisisScreen() {
       setIsLoadingConsumos(false);
     }
   }, [rangeStart, rangeEnd]);
+
+  // ── Range selection ──────────────────────────────────────────────────
+  const applyQuickRange = (daysBack: number) => {
+    const end = new Date();
+    const start = daysBack === 0 ? new Date() : daysAgo(daysBack);
+    setRangeStart(start);
+    setRangeEnd(end);
+    setSelPhase("start");
+    setActiveQuickDays(daysBack);
+    setCalendarKey(`${strFromDate(end)}-${Date.now()}`);
+  };
+
+  const handleCalendarDayPress = useCallback(({ dateString }: { dateString: string }) => {
+    const date = dateFromStr(dateString);
+    if (selPhase === "start") {
+      setRangeStart(date);
+      setRangeEnd(date);
+      setSelPhase("end");
+      setActiveQuickDays(null);
+    } else {
+      if (date < rangeStart) {
+        setRangeStart(date);
+        setRangeEnd(date);
+        // stay in "end" phase so user picks end next
+      } else {
+        setRangeEnd(date);
+        setSelPhase("start");
+        setCalendarKey(`${dateString}-${Date.now()}`);
+      }
+    }
+  }, [selPhase, rangeStart]);
 
   const toggleSeleccion = (id: string) => {
     setSeleccionados((prev) => {
@@ -323,7 +330,10 @@ export function AnalisisScreen() {
           {/* Tappable header */}
           <TouchableOpacity
             style={styles.pickerHeader}
-            onPress={() => setShowCalendar((v) => !v)}
+            onPress={() => {
+              if (!showCalendar && buscado) limpiarResultados();
+              setShowCalendar((v) => !v);
+            }}
             activeOpacity={0.7}
           >
             <View style={styles.dateRangeLeft}>
@@ -395,16 +405,18 @@ export function AnalisisScreen() {
         </View>
 
         {/* ── Search button ── */}
-        <TouchableOpacity
-          style={styles.buscarBtn}
-          onPress={() => { setShowCalendar(false); cargarConsumos(); }}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="magnifyingglass" size={15} color="#fff" />
-          <ThemedText style={styles.buscarBtnText} lightColor="#fff">
-            Buscar registros
-          </ThemedText>
-        </TouchableOpacity>
+        {!buscado && (
+          <TouchableOpacity
+            style={styles.buscarBtn}
+            onPress={() => { setShowCalendar(false); cargarConsumos(); }}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name="magnifyingglass" size={15} color="#fff" />
+            <ThemedText style={styles.buscarBtnText} lightColor="#fff">
+              Buscar registros
+            </ThemedText>
+          </TouchableOpacity>
+        )}
 
         {/* ── Loading ── */}
         {isLoadingConsumos && (
@@ -735,6 +747,7 @@ const styles = StyleSheet.create({
   },
   phaseHintText: { fontSize: 12, fontWeight: "500" },
 
+  // ── Auto-search hint (replaces search button when already searched) ──
   // ── Search button ──
   buscarBtn: {
     flexDirection: "row",
