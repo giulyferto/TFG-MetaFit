@@ -1,6 +1,6 @@
 import { auth, db } from "@/firebase";
 import type { IngredienteGuardado } from "@/utils/comidas";
-import { collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
+import { QueryDocumentSnapshot, collection, deleteDoc, doc, getDocs, limit, orderBy, query, startAfter, updateDoc, where } from "firebase/firestore";
 
 export type Consumo = {
   id: string;
@@ -358,6 +358,63 @@ export async function obtenerConsumosPorRango(
   } catch (error) {
     console.error("Error al obtener consumos por rango:", error);
     return [];
+  }
+}
+
+export type PaginaConsumos = {
+  consumos: Consumo[];
+  nextCursor: QueryDocumentSnapshot | null;
+  hayMas: boolean;
+};
+
+export async function obtenerConsumosPaginados(
+  pageSize: number = 15,
+  cursor?: QueryDocumentSnapshot | null
+): Promise<PaginaConsumos> {
+  const user = auth.currentUser;
+  if (!user) return { consumos: [], nextCursor: null, hayMas: false };
+
+  try {
+    const registrosRef = collection(db, "registrosComidas");
+    const q = cursor
+      ? query(registrosRef, where("userId", "==", user.uid), orderBy("fechaCreacion", "desc"), startAfter(cursor), limit(pageSize + 1))
+      : query(registrosRef, where("userId", "==", user.uid), orderBy("fechaCreacion", "desc"), limit(pageSize + 1));
+
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs;
+    const hayMas = docs.length > pageSize;
+    const pageDocs = hayMas ? docs.slice(0, pageSize) : docs;
+    const nextCursor = pageDocs.length > 0 ? pageDocs[pageDocs.length - 1] : null;
+
+    const consumos: Consumo[] = pageDocs.map((d) => {
+      const data = d.data();
+      const fecha = data.fechaCreacion ? new Date(data.fechaCreacion) : new Date();
+      const tipoComida = data.tipoComida || "Comida";
+      const nombre = data.nombre || "";
+      return {
+        id: d.id,
+        calificacion: null,
+        descripcion: nombre
+          ? `${tipoComida} - ${nombre} - ${formatearFecha(fecha)}`
+          : `${tipoComida} - ${formatearFecha(fecha)}`,
+        fechaCreacion: data.fechaCreacion || new Date().toISOString(),
+        tipoComida,
+        nombre,
+        imagenUrl: data.imagenUrl || undefined,
+        energia: data.energia || undefined,
+        carb: data.carb || undefined,
+        proteina: data.proteina || undefined,
+        fibra: data.fibra || undefined,
+        grasa: data.grasa || undefined,
+        cantidad: data.cantidad || undefined,
+        ingredientes: data.ingredientes || undefined,
+      };
+    });
+
+    return { consumos, nextCursor, hayMas };
+  } catch (error) {
+    console.error("Error al obtener consumos paginados:", error);
+    return { consumos: [], nextCursor: null, hayMas: false };
   }
 }
 

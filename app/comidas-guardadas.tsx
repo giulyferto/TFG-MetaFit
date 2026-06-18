@@ -8,6 +8,8 @@ import {
   obtenerComidasAnteriores,
   type ComidaAnterior,
 } from '@/utils/comidas';
+import { obtenerConsumosPaginados, type Consumo } from '@/utils/consumos';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -15,40 +17,24 @@ import {
   Alert,
   FlatList,
   Modal,
-  ScrollView,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type NuevaComida = {
-  nombre: string;
-  cantidad: string;
-  energia: string;
-  carb: string;
-  proteina: string;
-  fibra: string;
-  grasa: string;
-};
-
-const COMIDA_VACIA: NuevaComida = {
-  nombre: '',
-  cantidad: '',
-  energia: '',
-  carb: '',
-  proteina: '',
-  fibra: '',
-  grasa: '',
-};
+const PAGE_SIZE = 15;
 
 export default function ComidasGuardadasScreen() {
   const [comidas, setComidas] = useState<ComidaAnterior[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [nuevaComida, setNuevaComida] = useState<NuevaComida>(COMIDA_VACIA);
-  const [guardando, setGuardando] = useState(false);
+  const [registro, setRegistro] = useState<Consumo[]>([]);
+  const [loadingRegistro, setLoadingRegistro] = useState(false);
+  const [loadingMas, setLoadingMas] = useState(false);
+  const [cursorRegistro, setCursorRegistro] = useState<QueryDocumentSnapshot | null>(null);
+  const [hayMasRegistro, setHayMasRegistro] = useState(false);
+  const [guardandoId, setGuardandoId] = useState<string | null>(null);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -65,6 +51,57 @@ export default function ComidasGuardadasScreen() {
       Alert.alert('Error', 'No se pudieron cargar las comidas guardadas.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const abrirModal = async () => {
+    setModalVisible(true);
+    setLoadingRegistro(true);
+    try {
+      const { consumos, nextCursor, hayMas } = await obtenerConsumosPaginados(PAGE_SIZE);
+      setRegistro(consumos);
+      setCursorRegistro(nextCursor);
+      setHayMasRegistro(hayMas);
+    } catch {
+      Alert.alert('Error', 'No se pudo cargar el registro.');
+    } finally {
+      setLoadingRegistro(false);
+    }
+  };
+
+  const cargarMasPagina = async () => {
+    if (loadingMas || !hayMasRegistro || !cursorRegistro) return;
+    setLoadingMas(true);
+    try {
+      const { consumos, nextCursor, hayMas } = await obtenerConsumosPaginados(PAGE_SIZE, cursorRegistro);
+      setRegistro((prev) => [...prev, ...consumos]);
+      setCursorRegistro(nextCursor);
+      setHayMasRegistro(hayMas);
+    } catch {
+      // silently ignore
+    } finally {
+      setLoadingMas(false);
+    }
+  };
+
+  const handleGuardarDesdeRegistro = async (consumo: Consumo) => {
+    setGuardandoId(consumo.id);
+    try {
+      await guardarComidaComoPlantilla({
+        nombre: consumo.nombre || '',
+        cantidad: consumo.cantidad || '',
+        energia: consumo.energia || '',
+        carb: consumo.carb || '',
+        proteina: consumo.proteina || '',
+        fibra: consumo.fibra || '',
+        grasa: consumo.grasa || '',
+      });
+      setModalVisible(false);
+      await cargarComidas();
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar la comida.');
+    } finally {
+      setGuardandoId(null);
     }
   };
 
@@ -88,32 +125,6 @@ export default function ComidasGuardadasScreen() {
         },
       ]
     );
-  };
-
-  const handleGuardar = async () => {
-    if (!nuevaComida.nombre.trim()) {
-      Alert.alert('Error', 'El nombre de la comida es obligatorio.');
-      return;
-    }
-    setGuardando(true);
-    try {
-      await guardarComidaComoPlantilla({
-        nombre: nuevaComida.nombre.trim(),
-        cantidad: nuevaComida.cantidad,
-        energia: nuevaComida.energia,
-        carb: nuevaComida.carb,
-        proteina: nuevaComida.proteina,
-        fibra: nuevaComida.fibra,
-        grasa: nuevaComida.grasa,
-      });
-      setModalVisible(false);
-      setNuevaComida(COMIDA_VACIA);
-      await cargarComidas();
-    } catch {
-      Alert.alert('Error', 'No se pudo guardar la comida.');
-    } finally {
-      setGuardando(false);
-    }
   };
 
   const renderItem = ({ item }: { item: ComidaAnterior }) => (
@@ -142,6 +153,39 @@ export default function ComidasGuardadasScreen() {
     </View>
   );
 
+  const renderRegistroItem = ({ item }: { item: Consumo }) => {
+    const isGuardando = guardandoId === item.id;
+    return (
+      <TouchableOpacity
+        style={styles.registroRow}
+        onPress={() => handleGuardarDesdeRegistro(item)}
+        activeOpacity={0.7}
+        disabled={isGuardando}
+      >
+        <View style={styles.comidaInfo}>
+          <ThemedText style={styles.comidaNombre} lightColor={MetaFitColors.text.primary}>
+            {item.nombre || 'Sin nombre'}
+          </ThemedText>
+          <ThemedText style={styles.comidaDetalle} lightColor={MetaFitColors.text.tertiary}>
+            {[
+              item.tipoComida || null,
+              item.energia ? `${item.energia} kcal` : null,
+              item.proteina ? `P: ${item.proteina}g` : null,
+              item.carb ? `C: ${item.carb}g` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ') || 'Sin datos nutricionales'}
+          </ThemedText>
+        </View>
+        {isGuardando ? (
+          <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
+        ) : (
+          <IconSymbol name="plus.circle" size={22} color={MetaFitColors.button.primary} />
+        )}
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
       {/* Header */}
@@ -152,16 +196,12 @@ export default function ComidasGuardadasScreen() {
         <ThemedText style={styles.title} lightColor={MetaFitColors.text.primary}>
           Comidas guardadas
         </ThemedText>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => setModalVisible(true)}
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity style={styles.addButton} onPress={abrirModal} activeOpacity={0.7}>
           <IconSymbol name="plus" size={20} color={MetaFitColors.text.white} />
         </TouchableOpacity>
       </View>
 
-      {/* Lista */}
+      {/* Lista de comidas guardadas */}
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={MetaFitColors.button.primary} />
@@ -173,7 +213,7 @@ export default function ComidasGuardadasScreen() {
             No tienes comidas guardadas
           </ThemedText>
           <ThemedText style={styles.emptySubtext} lightColor={MetaFitColors.text.tertiary}>
-            Toca + para agregar una nueva
+            Toca + para agregar desde el registro
           </ThemedText>
         </View>
       ) : (
@@ -187,113 +227,61 @@ export default function ComidasGuardadasScreen() {
         />
       )}
 
-      {/* Modal agregar comida */}
+      {/* Modal: seleccionar del registro */}
       <Modal
         visible={modalVisible}
         animationType="slide"
         transparent
         onRequestClose={() => {
           setModalVisible(false);
-          setNuevaComida(COMIDA_VACIA);
+          setRegistro([]);
+          setCursorRegistro(null);
+          setHayMasRegistro(false);
         }}
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.modalHeader}>
               <ThemedText style={styles.modalTitle} lightColor={MetaFitColors.text.primary}>
-                Nueva comida
+                Agregar del registro
               </ThemedText>
-              <TouchableOpacity
-                onPress={() => {
-                  setModalVisible(false);
-                  setNuevaComida(COMIDA_VACIA);
-                }}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity onPress={() => { setModalVisible(false); setRegistro([]); setCursorRegistro(null); setHayMasRegistro(false); }} activeOpacity={0.7}>
                 <IconSymbol name="xmark.circle.fill" size={24} color={MetaFitColors.text.tertiary} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <TextInput
-                style={styles.input}
-                placeholder="Nombre *"
-                placeholderTextColor={MetaFitColors.text.tertiary}
-                value={nuevaComida.nombre}
-                onChangeText={(v) => setNuevaComida((p) => ({ ...p, nombre: v }))}
-              />
-              <TextInput
-                style={styles.input}
-                placeholder="Cantidad (ej: 100g)"
-                placeholderTextColor={MetaFitColors.text.tertiary}
-                value={nuevaComida.cantidad}
-                onChangeText={(v) => setNuevaComida((p) => ({ ...p, cantidad: v }))}
-              />
-
-              <ThemedText style={styles.inputGroupLabel} lightColor={MetaFitColors.text.tertiary}>
-                Información nutricional
-              </ThemedText>
-
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.inputHalf]}
-                  placeholder="Energía (kcal)"
-                  placeholderTextColor={MetaFitColors.text.tertiary}
-                  keyboardType="numeric"
-                  value={nuevaComida.energia}
-                  onChangeText={(v) => setNuevaComida((p) => ({ ...p, energia: v }))}
-                />
-                <TextInput
-                  style={[styles.input, styles.inputHalf]}
-                  placeholder="Proteína (g)"
-                  placeholderTextColor={MetaFitColors.text.tertiary}
-                  keyboardType="numeric"
-                  value={nuevaComida.proteina}
-                  onChangeText={(v) => setNuevaComida((p) => ({ ...p, proteina: v }))}
-                />
+            {loadingRegistro ? (
+              <View style={styles.modalCentered}>
+                <ActivityIndicator size="large" color={MetaFitColors.button.primary} />
               </View>
-              <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, styles.inputHalf]}
-                  placeholder="Carbohidratos (g)"
-                  placeholderTextColor={MetaFitColors.text.tertiary}
-                  keyboardType="numeric"
-                  value={nuevaComida.carb}
-                  onChangeText={(v) => setNuevaComida((p) => ({ ...p, carb: v }))}
-                />
-                <TextInput
-                  style={[styles.input, styles.inputHalf]}
-                  placeholder="Grasas (g)"
-                  placeholderTextColor={MetaFitColors.text.tertiary}
-                  keyboardType="numeric"
-                  value={nuevaComida.grasa}
-                  onChangeText={(v) => setNuevaComida((p) => ({ ...p, grasa: v }))}
-                />
+            ) : registro.length === 0 ? (
+              <View style={styles.modalCentered}>
+                <IconSymbol name="fork.knife" size={40} color={MetaFitColors.text.tertiary} />
+                <ThemedText style={styles.emptyText} lightColor={MetaFitColors.text.tertiary}>
+                  Sin comidas en el registro
+                </ThemedText>
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Fibra (g)"
-                placeholderTextColor={MetaFitColors.text.tertiary}
-                keyboardType="numeric"
-                value={nuevaComida.fibra}
-                onChangeText={(v) => setNuevaComida((p) => ({ ...p, fibra: v }))}
+            ) : (
+              <FlatList
+                data={registro}
+                keyExtractor={(item) => item.id}
+                renderItem={renderRegistroItem}
+                showsVerticalScrollIndicator={false}
+                style={styles.registroList}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                onEndReached={cargarMasPagina}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={
+                  loadingMas ? (
+                    <View style={styles.footerLoader}>
+                      <ActivityIndicator size="small" color={MetaFitColors.button.primary} />
+                    </View>
+                  ) : hayMasRegistro ? (
+                    <View style={styles.footerLoader} />
+                  ) : null
+                }
               />
-
-              <TouchableOpacity
-                style={[styles.saveButton, guardando && styles.saveButtonDisabled]}
-                onPress={handleGuardar}
-                disabled={guardando}
-                activeOpacity={0.8}
-              >
-                {guardando ? (
-                  <ActivityIndicator size="small" color={MetaFitColors.text.white} />
-                ) : (
-                  <ThemedText style={styles.saveButtonText} lightColor={MetaFitColors.text.white}>
-                    Guardar comida
-                  </ThemedText>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
@@ -369,6 +357,13 @@ const styles = StyleSheet.create({
     borderColor: MetaFitColors.border.light,
     gap: 12,
   },
+  registroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    gap: 12,
+  },
   comidaInfo: {
     flex: 1,
     gap: 3,
@@ -402,59 +397,29 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingTop: 20,
-    maxHeight: '90%',
+    height: '85%',
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  inputGroupLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-    marginTop: 4,
-    marginBottom: 8,
-    paddingHorizontal: 4,
-  },
-  input: {
-    backgroundColor: MetaFitColors.background.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: MetaFitColors.text.primary,
-    marginBottom: 10,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  inputHalf: {
-    flex: 1,
-    marginBottom: 10,
-  },
-  saveButton: {
-    backgroundColor: MetaFitColors.button.primary,
-    borderRadius: 14,
-    paddingVertical: 15,
+  modalCentered: {
+    paddingVertical: 48,
     alignItems: 'center',
-    marginTop: 8,
+    gap: 12,
   },
-  saveButtonDisabled: {
-    opacity: 0.6,
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
   },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
+  registroList: {
+    flex: 1,
   },
 });
