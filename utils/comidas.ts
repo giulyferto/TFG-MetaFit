@@ -14,6 +14,7 @@ export type ComidaAnterior = {
   grasa: string;
   tipoComida?: string;
   fechaCreacion?: string;
+  imagenUrl?: string;
 };
 
 /**
@@ -51,6 +52,7 @@ export async function obtenerComidasAnteriores(limite: number = 50): Promise<Com
         grasa: data.grasa || "",
         tipoComida: data.tipoComida || "",
         fechaCreacion: data.fechaCreacion || "",
+        imagenUrl: data.imagenUrl || undefined,
       });
     });
     
@@ -85,7 +87,8 @@ export type DatosComidaParaGuardar = DatosComida & {
  * @returns Promise con el ID del documento creado
  */
 export async function guardarComidaComoPlantilla(
-  datosComida: DatosComida
+  datosComida: DatosComida,
+  imagenUrl?: string
 ): Promise<string> {
   const user = auth.currentUser;
   if (!user) {
@@ -94,7 +97,7 @@ export async function guardarComidaComoPlantilla(
 
   try {
     const comidasRef = collection(db, "comidas");
-    const datosParaGuardar = {
+    const datosParaGuardar: Record<string, string | undefined> = {
       nombre: datosComida.nombre || "",
       cantidad: datosComida.cantidad || "",
       energia: datosComida.energia || "",
@@ -105,6 +108,10 @@ export async function guardarComidaComoPlantilla(
       userId: user.uid,
       fechaCreacion: new Date().toISOString(),
     };
+
+    if (imagenUrl) {
+      datosParaGuardar.imagenUrl = imagenUrl;
+    }
 
     const docRef = await addDoc(comidasRef, datosParaGuardar);
     return docRef.id;

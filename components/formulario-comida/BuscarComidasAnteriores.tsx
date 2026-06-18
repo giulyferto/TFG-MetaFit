@@ -5,6 +5,7 @@ import { obtenerComidasAnteriores, type ComidaAnterior } from "@/utils/comidas";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
@@ -130,6 +131,20 @@ export function BuscarComidasAnteriores({
                         </View>
                       )}
                     </View>
+                    {item.imagenUrl ? (
+                      <Image
+                        source={{ uri: item.imagenUrl }}
+                        style={styles.comidaImagen}
+                      />
+                    ) : (
+                      <View style={styles.comidaImagenPlaceholder}>
+                        <IconSymbol
+                          name="fork.knife"
+                          size={16}
+                          color={MetaFitColors.text.tertiary}
+                        />
+                      </View>
+                    )}
                     <View style={styles.comidaInfo}>
                       <ThemedText
                         style={styles.comidaNombre}
@@ -231,6 +246,21 @@ const styles = StyleSheet.create({
     backgroundColor: MetaFitColors.button.primary,
     justifyContent: "center",
     alignItems: "center",
+  },
+  comidaImagen: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  comidaImagenPlaceholder: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 10,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: "center",
+    justifyContent: "center",
   },
   comidaInfo: {
     flex: 1,

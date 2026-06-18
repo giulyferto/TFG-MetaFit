@@ -117,7 +117,7 @@ export function TablaConsumos({
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIconWrapper}>
-          <ThemedText style={styles.emptyIcon}>🥗</ThemedText>
+          <IconSymbol name="fork.knife" size={36} color={MetaFitColors.text.tertiary} />
         </View>
         <ThemedText style={styles.emptyTitle} lightColor={MetaFitColors.text.primary}>
           {esHoy ? "Sin registros aún" : "Sin registros ese día"}
@@ -408,10 +408,6 @@ const styles = StyleSheet.create({
     paddingTop: 36,
     paddingBottom: 12,
     alignItems: "center",
-  },
-  emptyIcon: {
-    fontSize: 44,
-    lineHeight: 54,
   },
   emptyTitle: {
     fontSize: 17,

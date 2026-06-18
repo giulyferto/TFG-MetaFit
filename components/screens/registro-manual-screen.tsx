@@ -529,8 +529,8 @@ export function RegistroManualScreen({
           </>
         )}
 
-        {/* Foto opcional (solo modo estándar, sin foto de escaneo previa) */}
-        {(!ingredientes || ingredientes.length === 0) && (
+        {/* Foto opcional (solo modo estándar, sin foto de escaneo previa, sin comida guardada seleccionada ni dropdown abierto) */}
+        {(!ingredientes || ingredientes.length === 0) && comidasSeleccionadas.length === 0 && !isDropdownOpen && (
           <View style={styles.fotoSection}>
             {localFotoUri ? (
               <View style={styles.fotoPreviewRow}>

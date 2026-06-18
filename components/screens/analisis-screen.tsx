@@ -431,7 +431,7 @@ export function AnalisisScreen() {
         {/* ── Empty ── */}
         {!isLoadingConsumos && buscado && consumos.length === 0 && (
           <View style={styles.emptyCard}>
-            <ThemedText style={styles.emptyEmoji}>🥗</ThemedText>
+            <IconSymbol name="fork.knife" size={40} color={MetaFitColors.text.tertiary} />
             <ThemedText style={styles.emptyTitle} lightColor={MetaFitColors.text.primary}>
               Sin registros
             </ThemedText>
@@ -490,7 +490,7 @@ export function AnalisisScreen() {
                       <Image source={{ uri: consumo.imagenUrl }} style={styles.consumoThumb} contentFit="cover" />
                     ) : (
                       <View style={[styles.consumoEmojiWrap, { backgroundColor: config.bg }]}>
-                        <ThemedText style={styles.consumoEmoji}>{config.emoji}</ThemedText>
+                        <IconSymbol name="fork.knife" size={20} color={config.color} />
                       </View>
                     )}
                     <View style={styles.consumoInfo}>
@@ -775,7 +775,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  emptyEmoji: { fontSize: 40, lineHeight: 52 },
   emptyTitle: { fontSize: 17, fontWeight: "700", marginTop: 4 },
   emptySubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
 
@@ -835,7 +834,6 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
     flexShrink: 0, marginRight: 10,
   },
-  consumoEmoji: { fontSize: 20 },
   consumoInfo: { flex: 1, gap: 2, marginRight: 10 },
   consumoNombre: { fontSize: 14, fontWeight: "700", letterSpacing: -0.1 },
   consumoMeta: { fontSize: 12, fontWeight: "500" },

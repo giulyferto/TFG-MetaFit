@@ -16,6 +16,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   Modal,
   StyleSheet,
   TouchableOpacity,
@@ -87,15 +88,18 @@ export default function ComidasGuardadasScreen() {
   const handleGuardarDesdeRegistro = async (consumo: Consumo) => {
     setGuardandoId(consumo.id);
     try {
-      await guardarComidaComoPlantilla({
-        nombre: consumo.nombre || '',
-        cantidad: consumo.cantidad || '',
-        energia: consumo.energia || '',
-        carb: consumo.carb || '',
-        proteina: consumo.proteina || '',
-        fibra: consumo.fibra || '',
-        grasa: consumo.grasa || '',
-      });
+      await guardarComidaComoPlantilla(
+        {
+          nombre: consumo.nombre || '',
+          cantidad: consumo.cantidad || '',
+          energia: consumo.energia || '',
+          carb: consumo.carb || '',
+          proteina: consumo.proteina || '',
+          fibra: consumo.fibra || '',
+          grasa: consumo.grasa || '',
+        },
+        consumo.imagenUrl
+      );
       setModalVisible(false);
       await cargarComidas();
     } catch {
@@ -129,6 +133,13 @@ export default function ComidasGuardadasScreen() {
 
   const renderItem = ({ item }: { item: ComidaAnterior }) => (
     <View style={styles.comidaRow}>
+      {item.imagenUrl ? (
+        <Image source={{ uri: item.imagenUrl }} style={styles.comidaImagen} />
+      ) : (
+        <View style={styles.comidaImagenPlaceholder}>
+          <IconSymbol name="fork.knife" size={18} color={MetaFitColors.text.tertiary} />
+        </View>
+      )}
       <View style={styles.comidaInfo}>
         <ThemedText style={styles.comidaNombre} lightColor={MetaFitColors.text.primary}>
           {item.nombre || 'Sin nombre'}
@@ -162,6 +173,13 @@ export default function ComidasGuardadasScreen() {
         activeOpacity={0.7}
         disabled={isGuardando}
       >
+        {item.imagenUrl ? (
+          <Image source={{ uri: item.imagenUrl }} style={styles.comidaImagen} />
+        ) : (
+          <View style={styles.comidaImagenPlaceholder}>
+            <IconSymbol name="fork.knife" size={18} color={MetaFitColors.text.tertiary} />
+          </View>
+        )}
         <View style={styles.comidaInfo}>
           <ThemedText style={styles.comidaNombre} lightColor={MetaFitColors.text.primary}>
             {item.nombre || 'Sin nombre'}
@@ -363,6 +381,19 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 4,
     gap: 12,
+  },
+  comidaImagen: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+  },
+  comidaImagenPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   comidaInfo: {
     flex: 1,
