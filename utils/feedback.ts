@@ -1,5 +1,5 @@
 import { auth, db } from "@/firebase";
-import { addDoc, collection } from "firebase/firestore";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
 
 export type FeedbackParaGuardar = {
   texto: string;
@@ -34,5 +34,26 @@ export async function guardarFeedback(feedback: FeedbackParaGuardar): Promise<st
     console.error("Error al guardar feedback:", error);
     throw error;
   }
+}
+
+export async function obtenerFeedbackDeRegistro(
+  registroComidaId: string
+): Promise<{ texto: string; calificacion: string } | null> {
+  const user = auth.currentUser;
+  if (!user) return null;
+
+  const q = query(
+    collection(db, "feedback"),
+    where("userId", "==", user.uid),
+    where("registroComidaId", "==", registroComidaId)
+  );
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+
+  const data = snapshot.docs[0].data();
+  return {
+    texto: data.texto || "",
+    calificacion: data.calificacion || "",
+  };
 }
 

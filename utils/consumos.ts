@@ -251,6 +251,20 @@ export async function obtenerResumenNutricionalDelDia(fecha: Date): Promise<Resu
   return resumen;
 }
 
+export async function eliminarFeedbackDeRegistro(registroId: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) throw new Error("Usuario no autenticado");
+
+  const feedbacksRef = collection(db, "feedback");
+  const q = query(
+    feedbacksRef,
+    where("userId", "==", user.uid),
+    where("registroComidaId", "==", registroId)
+  );
+  const snapshot = await getDocs(q);
+  await Promise.all(snapshot.docs.map((d) => deleteDoc(d.ref)));
+}
+
 export async function eliminarRegistroComida(registroId: string): Promise<void> {
   const user = auth.currentUser;
   if (!user) throw new Error("Usuario no autenticado");
@@ -282,6 +296,7 @@ export async function actualizarRegistroComida(
     grasa: string;
     tipoComida: string;
     ingredientes: IngredienteGuardado[];
+    imagenUrl: string;
   }>
 ): Promise<void> {
   const user = auth.currentUser;
@@ -415,6 +430,34 @@ export async function obtenerConsumosPaginados(
   } catch (error) {
     console.error("Error al obtener consumos paginados:", error);
     return { consumos: [], nextCursor: null, hayMas: false };
+  }
+}
+
+export async function obtenerFechasConConsumos(): Promise<string[]> {
+  const user = auth.currentUser;
+  if (!user) return [];
+
+  try {
+    const registrosRef = collection(db, "registrosComidas");
+    const q = query(registrosRef, where("userId", "==", user.uid));
+    const snapshot = await getDocs(q);
+
+    const dateSet = new Set<string>();
+    snapshot.forEach((d) => {
+      const fechaCreacion = d.data().fechaCreacion;
+      if (fechaCreacion) {
+        const fecha = new Date(fechaCreacion);
+        const y = fecha.getFullYear();
+        const m = (fecha.getMonth() + 1).toString().padStart(2, "0");
+        const day = fecha.getDate().toString().padStart(2, "0");
+        dateSet.add(`${y}-${m}-${day}`);
+      }
+    });
+
+    return Array.from(dateSet);
+  } catch (error) {
+    console.error("Error al obtener fechas con consumos:", error);
+    return [];
   }
 }
 

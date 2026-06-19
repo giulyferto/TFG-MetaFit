@@ -2,9 +2,11 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
 import type { Consumo } from "@/utils/consumos";
+import { obtenerFeedbackDeRegistro } from "@/utils/feedback";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
-import { ActionSheetIOS, ActivityIndicator, Alert, Platform, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
+import { ActionSheetIOS, ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import Markdown from "react-native-markdown-display";
 
 const TIPO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   Desayuno: { label: "Desayuno", color: "#C47A2B", bg: "rgba(228, 160, 60, 0.12)" },
@@ -73,10 +75,33 @@ export function TablaConsumos({
   actionsMode = "inline",
 }: TablaConsumosProps) {
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [feedbackConsumo, setFeedbackConsumo] = useState<Consumo | null>(null);
+  const [feedbackTexto, setFeedbackTexto] = useState<string>("");
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   useEffect(() => {
     setCurrentPage(1);
+    setExpandedCardId(null);
   }, [consumos.length]);
+
+  const toggleExpand = (id: string) => {
+    setExpandedCardId(prev => prev === id ? null : id);
+  };
+
+  const handleVerFeedback = async (consumo: Consumo) => {
+    setFeedbackConsumo(consumo);
+    setFeedbackTexto("");
+    setFeedbackLoading(true);
+    try {
+      const fb = await obtenerFeedbackDeRegistro(consumo.id);
+      setFeedbackTexto(fb?.texto ?? "No hay análisis guardado para esta comida.");
+    } catch {
+      setFeedbackTexto("No se pudo cargar el análisis.");
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
 
   const totalPages = Math.ceil(consumos.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -149,23 +174,36 @@ export function TablaConsumos({
 
   const handleCardPress = (consumo: Consumo) => {
     const titulo = consumo.nombre || consumo.tipoComida || "Registro";
-    const opciones = ["Cancelar", "Editar", "Agregar de nuevo", "Eliminar"];
+    const tieneFeedback = consumo.calificacion !== null;
 
     if (Platform.OS === "ios") {
+      const opciones = tieneFeedback
+        ? ["Cancelar", "Ver análisis", "Editar", "Agregar de nuevo", "Eliminar"]
+        : ["Cancelar", "Editar", "Agregar de nuevo", "Eliminar"];
+      const destructiveIndex = opciones.length - 1;
+
       ActionSheetIOS.showActionSheetWithOptions(
-        { options: opciones, cancelButtonIndex: 0, destructiveButtonIndex: 3, title: titulo },
+        { options: opciones, cancelButtonIndex: 0, destructiveButtonIndex: destructiveIndex, title: titulo },
         (idx) => {
-          if (idx === 1) onEditar?.(consumo);
-          else if (idx === 2) onReagregar?.(consumo);
-          else if (idx === 3) handleEliminar(consumo);
+          if (tieneFeedback) {
+            if (idx === 1) handleVerFeedback(consumo);
+            else if (idx === 2) onEditar?.(consumo);
+            else if (idx === 3) onReagregar?.(consumo);
+            else if (idx === 4) handleEliminar(consumo);
+          } else {
+            if (idx === 1) onEditar?.(consumo);
+            else if (idx === 2) onReagregar?.(consumo);
+            else if (idx === 3) handleEliminar(consumo);
+          }
         }
       );
     } else {
       Alert.alert(titulo, undefined, [
+        ...(tieneFeedback ? [{ text: "Ver análisis", onPress: () => handleVerFeedback(consumo) }] : []),
         { text: "Editar", onPress: () => onEditar?.(consumo) },
         { text: "Agregar de nuevo", onPress: () => onReagregar?.(consumo) },
-        { text: "Eliminar", style: "destructive", onPress: () => handleEliminar(consumo) },
-        { text: "Cancelar", style: "cancel" },
+        { text: "Eliminar", style: "destructive" as const, onPress: () => handleEliminar(consumo) },
+        { text: "Cancelar", style: "cancel" as const },
       ]);
     }
   };
@@ -184,12 +222,15 @@ export function TablaConsumos({
           const calColor = getCalificacionColor(consumo.calificacion);
           const calBg = getCalificacionBg(consumo.calificacion);
 
-          const CardWrapper = actionsMode === "sheet" && (onEditar || onReagregar || onEliminar)
-            ? TouchableOpacity
-            : View;
+          const hasInlineActions = onEditar || onReagregar || onEliminar || !!consumo.calificacion;
+          const isExpanded = expandedCardId === consumo.id;
+
+          const CardWrapper = TouchableOpacity;
           const cardWrapperProps = actionsMode === "sheet" && (onEditar || onReagregar || onEliminar)
             ? { activeOpacity: 0.75, onPress: () => handleCardPress(consumo) }
-            : {};
+            : actionsMode === "inline" && hasInlineActions
+            ? { activeOpacity: 0.97, onPress: () => toggleExpand(consumo.id) }
+            : { activeOpacity: 1 };
 
           return (
             <CardWrapper key={consumo.id} style={styles.consumoCard} {...cardWrapperProps}>
@@ -287,46 +328,67 @@ export function TablaConsumos({
                       {consumo.calificacion ?? "Sin calificar"}
                     </ThemedText>
                   </View>
+                  {actionsMode === "inline" && hasInlineActions && (
+                    <IconSymbol
+                      name={isExpanded ? "chevron.up" : "chevron.down"}
+                      size={11}
+                      color={MetaFitColors.text.tertiary}
+                      style={styles.expandChevron}
+                    />
+                  )}
                 </View>
 
-                {/* Action buttons — solo en modo inline */}
-                {actionsMode === "inline" && (onEditar || onEliminar || onReagregar) && (
+                {/* Action buttons — solo en modo inline, expandibles */}
+                {actionsMode === "inline" && isExpanded && (onEditar || onEliminar || onReagregar || consumo.calificacion) && (
                   <View style={styles.cardActions}>
-                    {onReagregar && (
+                    {/* Fila 1: Ver análisis — ancho completo */}
+                    {consumo.calificacion && (
                       <TouchableOpacity
-                        style={[styles.actionButton, styles.actionButtonReagregar]}
-                        onPress={() => onReagregar(consumo)}
+                        style={styles.actionButtonFeedback}
+                        onPress={() => handleVerFeedback(consumo)}
                         activeOpacity={0.7}
                       >
-                        <IconSymbol name="plus" size={13} color={MetaFitColors.button.primary} />
-                        <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.button.primary}>
-                          Agregar de nuevo
+                        <IconSymbol name="text.bubble" size={13} color={MetaFitColors.button.primary} />
+                        <ThemedText style={styles.actionButtonFeedbackText} lightColor={MetaFitColors.button.primary}>
+                          Ver análisis
                         </ThemedText>
                       </TouchableOpacity>
                     )}
-                    {onEditar && (
-                      <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={() => onEditar(consumo)}
-                        activeOpacity={0.7}
-                      >
-                        <IconSymbol name="pencil" size={13} color={MetaFitColors.button.primary} />
-                        <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.button.primary}>
-                          Editar
-                        </ThemedText>
-                      </TouchableOpacity>
-                    )}
-                    {onEliminar && (
-                      <TouchableOpacity
-                        style={[styles.actionButton, styles.actionButtonDanger]}
-                        onPress={() => handleEliminar(consumo)}
-                        activeOpacity={0.7}
-                      >
-                        <IconSymbol name="trash" size={13} color={MetaFitColors.calificacion.baja} />
-                        <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.calificacion.baja}>
-                          Eliminar
-                        </ThemedText>
-                      </TouchableOpacity>
+
+                    {/* Fila 2: utilidades */}
+                    {(onReagregar || onEditar || onEliminar) && (
+                      <View style={styles.cardActionsRow}>
+                        {onReagregar && (
+                          <TouchableOpacity
+                            style={[styles.actionButton, { flex: 1 }]}
+                            onPress={() => onReagregar(consumo)}
+                            activeOpacity={0.7}
+                          >
+                            <IconSymbol name="plus" size={12} color={MetaFitColors.button.primary} />
+                            <ThemedText style={styles.actionButtonText} lightColor={MetaFitColors.button.primary}>
+                              Agregar de nuevo
+                            </ThemedText>
+                          </TouchableOpacity>
+                        )}
+                        {onEditar && (
+                          <TouchableOpacity
+                            style={styles.actionButtonIcon}
+                            onPress={() => onEditar(consumo)}
+                            activeOpacity={0.7}
+                          >
+                            <IconSymbol name="pencil" size={14} color={MetaFitColors.text.secondary} />
+                          </TouchableOpacity>
+                        )}
+                        {onEliminar && (
+                          <TouchableOpacity
+                            style={[styles.actionButtonIcon, styles.actionButtonIconDanger]}
+                            onPress={() => handleEliminar(consumo)}
+                            activeOpacity={0.7}
+                          >
+                            <IconSymbol name="trash" size={14} color={MetaFitColors.calificacion.baja} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     )}
                   </View>
                 )}
@@ -377,6 +439,64 @@ export function TablaConsumos({
           <ThemedText style={styles.addButtonText}>+ Agregar comida</ThemedText>
         </Pressable>
       )}
+
+      {/* Feedback modal */}
+      <Modal
+        visible={feedbackConsumo !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setFeedbackConsumo(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            {/* Handle bar */}
+            <View style={styles.modalHandle} />
+
+            {/* Header */}
+            <View style={styles.modalHeader}>
+              <View style={styles.modalHeaderLeft}>
+                <ThemedText style={styles.modalTitle} lightColor={MetaFitColors.text.primary}>
+                  Análisis nutricional
+                </ThemedText>
+                {feedbackConsumo?.nombre && (
+                  <ThemedText style={styles.modalSubtitle} lightColor={MetaFitColors.text.secondary} numberOfLines={1}>
+                    {feedbackConsumo.nombre}
+                  </ThemedText>
+                )}
+              </View>
+              <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setFeedbackConsumo(null)}>
+                <IconSymbol name="xmark" size={16} color={MetaFitColors.text.secondary} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Calificación badge */}
+            {feedbackConsumo?.calificacion && (
+              <View style={[styles.modalCalBadge, { backgroundColor: getCalificacionBg(feedbackConsumo.calificacion) }]}>
+                <View style={[styles.modalCalDot, { backgroundColor: getCalificacionColor(feedbackConsumo.calificacion) }]} />
+                <ThemedText style={[styles.modalCalText, { color: getCalificacionColor(feedbackConsumo.calificacion) }]}>
+                  {feedbackConsumo.calificacion}
+                </ThemedText>
+              </View>
+            )}
+
+            {/* Content */}
+            <ScrollView style={styles.modalScroll} showsVerticalScrollIndicator={false}>
+              {feedbackLoading ? (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator color={MetaFitColors.button.primary} />
+                  <ThemedText style={styles.modalLoadingText} lightColor={MetaFitColors.text.secondary}>
+                    Cargando análisis...
+                  </ThemedText>
+                </View>
+              ) : (
+                <Markdown style={markdownStyles}>
+                  {feedbackTexto.replace(/\n*Calificaci[oó]n:\s*\[?(Muy[_ ]saludable|Equilibrada|Poco[_ ]nutritiv[ao]|Alta|Media|Baja)\]?\s*$/i, "").trim()}
+                </Markdown>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -449,13 +569,13 @@ const styles = StyleSheet.create({
 
   // Card list
   cardsList: {
-    gap: 10,
+    gap: 8,
     marginBottom: 4,
   },
   consumoCard: {
     flexDirection: "row",
     backgroundColor: MetaFitColors.background.card,
-    borderRadius: 14,
+    borderRadius: 13,
     borderWidth: 1,
     borderColor: MetaFitColors.border.light,
     overflow: "hidden",
@@ -463,43 +583,43 @@ const styles = StyleSheet.create({
 
   // Left accent bar
   accentBar: {
-    width: 4,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
+    width: 3,
+    borderTopLeftRadius: 13,
+    borderBottomLeftRadius: 13,
   },
 
   // Card body (everything to the right of the bar)
   cardBody: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    gap: 6,
   },
 
   // Name + thumbnail row
   topRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
+    gap: 8,
   },
   topRowLeft: {
     flex: 1,
-    gap: 6,
+    gap: 5,
   },
   nombreText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
-    lineHeight: 21,
+    lineHeight: 19,
   },
   thumbnailSlot: {
-    width: 56,
-    height: 56,
+    width: 46,
+    height: 46,
     flexShrink: 0,
   },
   thumbnail: {
-    width: 56,
-    height: 56,
-    borderRadius: 9,
+    width: 46,
+    height: 46,
+    borderRadius: 8,
     flexShrink: 0,
   },
 
@@ -598,35 +718,70 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.2,
   },
+  expandChevron: {
+    marginLeft: 4,
+  },
 
   // Action buttons
   cardActions: {
-    flexDirection: "row",
-    gap: 6,
-    paddingTop: 8,
+    gap: 7,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: MetaFitColors.border.light,
   },
+  // Fila secundaria de utilidades
+  cardActionsRow: {
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+  },
+  // Botón con texto (Agregar de nuevo — flex:1 en su fila)
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-    borderRadius: 7,
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     backgroundColor: MetaFitColors.background.elevated,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
   },
-  actionButtonDanger: {
-    backgroundColor: "rgba(201, 72, 72, 0.08)",
+  actionButtonText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
-  actionButtonReagregar: {
+  // Botones icono compactos (Editar / Eliminar)
+  actionButtonIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: MetaFitColors.background.elevated,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.light,
+  },
+  actionButtonIconDanger: {
+    backgroundColor: "rgba(201, 72, 72, 0.07)",
+    borderColor: "rgba(201, 72, 72, 0.18)",
+  },
+  // Botón "Ver análisis" — ancho completo, estilo destacado
+  actionButtonFeedback: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
     backgroundColor: MetaFitColors.background.elevated,
     borderWidth: 1,
     borderColor: MetaFitColors.border.accent,
   },
-  actionButtonText: {
-    fontSize: 11,
-    fontWeight: "600",
+  actionButtonFeedbackText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 
   // Pagination
@@ -656,4 +811,105 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
   },
+
+  // Feedback modal
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  modalSheet: {
+    backgroundColor: MetaFitColors.background.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingBottom: 48,
+    maxHeight: "80%",
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: MetaFitColors.border.light,
+    alignSelf: "center",
+    marginTop: 12,
+    marginBottom: 16,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    marginBottom: 14,
+    gap: 12,
+  },
+  modalHeaderLeft: {
+    flex: 1,
+    gap: 2,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    letterSpacing: -0.2,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  modalCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: MetaFitColors.background.elevated,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCalBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    alignSelf: "flex-start",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 14,
+  },
+  modalCalDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  modalCalText: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.2,
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  modalLoading: {
+    paddingVertical: 40,
+    alignItems: "center",
+    gap: 12,
+  },
+  modalLoadingText: {
+    fontSize: 14,
+  },
+});
+
+const markdownStyles = StyleSheet.create({
+  body: {
+    fontSize: 14,
+    lineHeight: 22,
+    color: MetaFitColors.text.primary,
+  },
+  heading1: { fontSize: 18, fontWeight: "700", color: MetaFitColors.text.primary, marginTop: 14, marginBottom: 6 },
+  heading2: { fontSize: 16, fontWeight: "700", color: MetaFitColors.text.primary, marginTop: 12, marginBottom: 5 },
+  heading3: { fontSize: 14, fontWeight: "600", color: MetaFitColors.button.primary, marginTop: 10, marginBottom: 4 },
+  strong: { fontWeight: "700", color: MetaFitColors.text.primary },
+  em: { fontStyle: "italic", color: MetaFitColors.text.secondary },
+  text: { fontSize: 14, lineHeight: 22, color: MetaFitColors.text.primary },
+  bullet_list: { marginTop: 6, marginBottom: 6 },
+  ordered_list: { marginTop: 6, marginBottom: 6 },
+  list_item: { marginBottom: 4 },
+  paragraph: { marginTop: 6, marginBottom: 6 },
 });

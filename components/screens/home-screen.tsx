@@ -55,6 +55,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
   };
 
   const handleEditar = (consumo: Consumo) => {
+    setPendingImagenUrl(consumo.imagenUrl || null);
     router.push({
       pathname: "/editar-registro",
       params: {
@@ -206,7 +207,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
           consumos={todosLosConsumos}
           isLoading={isLoading}
           itemsPerPage={5}
-          actionsMode="sheet"
+          actionsMode="inline"
           onAgregarComida={() => router.push("/registro-comida")}
           onEditar={handleEditar}
           onReagregar={handleReagregar}

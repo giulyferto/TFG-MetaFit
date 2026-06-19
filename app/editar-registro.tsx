@@ -3,9 +3,13 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { actualizarRegistroComida } from "@/utils/consumos";
+import { actualizarRegistroComida, eliminarFeedbackDeRegistro } from "@/utils/consumos";
 import { obtenerNutricionIngrediente } from "@/utils/openai";
 import type { IngredienteGuardado } from "@/utils/comidas";
+import { seleccionarImagen } from "@/utils/image";
+import { consumePendingImagenUrl } from "@/utils/nav-state";
+import { subirImagenComida } from "@/utils/storage";
+import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
@@ -57,7 +61,21 @@ export default function EditarRegistroPage() {
       : null
   );
 
+  const [currentImageUrl] = useState<string | null>(() => consumePendingImagenUrl());
+  const [localImageUri, setLocalImageUri] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const displayUri = localImageUri ?? currentImageUrl;
+  const showImage = !!displayUri && !imageFailed;
+  const fotoLabel = displayUri ? "Cambiar foto" : "Agregar foto";
+
+  const handleSeleccionarImagen = async () => {
+    await seleccionarImagen(({ uri }) => {
+      setLocalImageUri(uri);
+      setImageFailed(false);
+    });
+  };
 
   const handleCalcularConIA = async () => {
     const nombre = datosComida.nombre?.trim();
@@ -85,10 +103,39 @@ export default function EditarRegistroPage() {
     }
   };
 
+  const datosCambiaron = (): boolean => {
+    const tipoOriginal = TIPOS_COMIDA.includes(params.tipoComida as TipoComida)
+      ? (params.tipoComida as TipoComida)
+      : null;
+    if (tipoComida !== tipoOriginal) return true;
+
+    if (tieneIngredientes) {
+      return nombreEditable.trim() !== (params.nombre || "").trim();
+    }
+
+    return (
+      datosComida.nombre !== (params.nombre || "") ||
+      datosComida.cantidad !== (params.cantidad || "") ||
+      datosComida.energia !== (params.energia || "") ||
+      datosComida.carb !== (params.carb || "") ||
+      datosComida.proteina !== (params.proteina || "") ||
+      datosComida.fibra !== (params.fibra || "") ||
+      datosComida.grasa !== (params.grasa || "")
+    );
+  };
+
   const handleGuardar = async () => {
     const nombreFinal = tieneIngredientes ? nombreEditable.trim() : datosComida.nombre.trim();
     if (!nombreFinal) {
       Alert.alert("Error", "Por favor ingresa el nombre de la comida");
+      return;
+    }
+
+    const imagenCambio = !!localImageUri;
+    const hayOtrosCambios = datosCambiaron();
+
+    if (!imagenCambio && !hayOtrosCambios) {
+      router.back();
       return;
     }
 
@@ -98,26 +145,41 @@ export default function EditarRegistroPage() {
         ? { ...datosComida, nombre: nombreFinal }
         : datosComida;
 
+      let imagenUrlFinal: string | undefined;
+      if (imagenCambio) {
+        imagenUrlFinal = await subirImagenComida(localImageUri!, params.registroId);
+      }
+
+      if (hayOtrosCambios) {
+        await eliminarFeedbackDeRegistro(params.registroId);
+      }
+
       await actualizarRegistroComida(params.registroId, {
         ...datosFinales,
         tipoComida: tipoComida || undefined,
         ...(tieneIngredientes ? { ingredientes: ingredientesIniciales } : {}),
+        ...(imagenUrlFinal ? { imagenUrl: imagenUrlFinal } : {}),
       });
-      router.replace({
-        pathname: "/feedback",
-        params: {
-          nombre: datosFinales.nombre || "",
-          cantidad: datosFinales.cantidad || "",
-          energia: datosFinales.energia || "",
-          carb: datosFinales.carb || "",
-          proteina: datosFinales.proteina || "",
-          fibra: datosFinales.fibra || "",
-          grasa: datosFinales.grasa || "",
-          tipoComida: tipoComida || "",
-          registroComidaId: params.registroId || "",
-          ingredientesJson: tieneIngredientes ? JSON.stringify(ingredientesIniciales) : "",
-        },
-      });
+
+      if (hayOtrosCambios) {
+        router.replace({
+          pathname: "/feedback",
+          params: {
+            nombre: datosFinales.nombre || "",
+            cantidad: datosFinales.cantidad || "",
+            energia: datosFinales.energia || "",
+            carb: datosFinales.carb || "",
+            proteina: datosFinales.proteina || "",
+            fibra: datosFinales.fibra || "",
+            grasa: datosFinales.grasa || "",
+            tipoComida: tipoComida || "",
+            registroComidaId: params.registroId || "",
+            ingredientesJson: tieneIngredientes ? JSON.stringify(ingredientesIniciales) : "",
+          },
+        });
+      } else {
+        router.back();
+      }
     } catch (error: any) {
       Alert.alert("Error", `No se pudo guardar: ${error.message || "Error desconocido"}`);
     } finally {
@@ -167,6 +229,40 @@ export default function EditarRegistroPage() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Imagen */}
+        {showImage ? (
+          <TouchableOpacity
+            style={styles.heroImageContainer}
+            onPress={handleSeleccionarImagen}
+            activeOpacity={0.85}
+          >
+            <Image
+              source={{ uri: displayUri! }}
+              style={styles.heroImage}
+              contentFit="cover"
+              onError={() => setImageFailed(true)}
+              transition={300}
+            />
+            <View style={styles.heroImageOverlay}>
+              <IconSymbol name="camera.fill" size={14} color="#fff" />
+              <ThemedText style={styles.heroImageOverlayText} lightColor="#fff">
+                Cambiar foto
+              </ThemedText>
+            </View>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={styles.agregarFotoButton}
+            onPress={handleSeleccionarImagen}
+            activeOpacity={0.75}
+          >
+            <IconSymbol name="camera" size={16} color={MetaFitColors.button.primary} />
+            <ThemedText style={styles.agregarFotoText} lightColor={MetaFitColors.button.primary}>
+              {fotoLabel}
+            </ThemedText>
+          </TouchableOpacity>
+        )}
 
         {tieneIngredientes ? (
           /* ── Vista de desglose por ingredientes ── */
@@ -376,7 +472,7 @@ const styles = StyleSheet.create({
   tipoComidaContainer: {
     flexDirection: "row",
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 20,
     flexWrap: "wrap",
   },
   tipoComidaButton: {
@@ -399,6 +495,51 @@ const styles = StyleSheet.create({
   },
   tipoComidaTextActive: {
     color: MetaFitColors.button.primary,
+  },
+  // Imagen
+  heroImageContainer: {
+    width: "100%",
+    height: 200,
+    borderRadius: 18,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  heroImageOverlay: {
+    position: "absolute",
+    bottom: 10,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+  },
+  heroImageOverlayText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  agregarFotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: MetaFitColors.background.elevated,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: MetaFitColors.border.accent,
+    borderStyle: "dashed",
+    paddingVertical: 14,
+    marginBottom: 16,
+  },
+  agregarFotoText: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   guardarButton: {
     backgroundColor: MetaFitColors.button.primary,

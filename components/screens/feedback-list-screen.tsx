@@ -5,13 +5,14 @@ import { MetaFitColors } from "@/constants/theme";
 import {
   eliminarRegistroComida,
   obtenerConsumosPorFecha,
+  obtenerFechasConConsumos,
   obtenerResumenNutricionalDelDia,
   type Consumo,
   type ResumenNutricional,
 } from "@/utils/consumos";
 import { setPendingImagenUrl } from "@/utils/nav-state";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -63,16 +64,19 @@ export function FeedbackListScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showCalendar, setShowCalendar] = useState<boolean>(false);
+  const [datesWithFood, setDatesWithFood] = useState<string[]>([]);
 
   const cargarConsumos = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [consumosFiltrados, resumenDia] = await Promise.all([
+      const [consumosFiltrados, resumenDia, fechas] = await Promise.all([
         obtenerConsumosPorFecha(selectedDate),
         obtenerResumenNutricionalDelDia(selectedDate),
+        obtenerFechasConConsumos(),
       ]);
       setConsumos(consumosFiltrados);
       setResumen(resumenDia);
+      setDatesWithFood(fechas);
     } catch (error) {
       console.error("Error al cargar consumos:", error);
     } finally {
@@ -108,6 +112,7 @@ export function FeedbackListScreen() {
   };
 
   const handleEditar = (consumo: Consumo) => {
+    setPendingImagenUrl(consumo.imagenUrl || null);
     router.push({
       pathname: "/editar-registro",
       params: {
@@ -186,6 +191,19 @@ export function FeedbackListScreen() {
   const todayStr = strFromDate(new Date());
   const selectedStr = strFromDate(selectedDate);
 
+  const markedDates = useMemo(() => {
+    const result: Record<string, { selected?: boolean; selectedColor?: string; marked?: boolean; dotColor?: string }> = {};
+    for (const dateStr of datesWithFood) {
+      result[dateStr] = { marked: true, dotColor: MetaFitColors.button.primary };
+    }
+    result[selectedStr] = {
+      ...(result[selectedStr] ?? {}),
+      selected: true,
+      selectedColor: MetaFitColors.button.primary,
+    };
+    return result;
+  }, [datesWithFood, selectedStr]);
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <ScrollView
@@ -259,12 +277,7 @@ export function FeedbackListScreen() {
                 current={selectedStr}
                 onDayPress={handleDayPress}
                 maxDate={todayStr}
-                markedDates={{
-                  [selectedStr]: {
-                    selected: true,
-                    selectedColor: MetaFitColors.button.primary,
-                  },
-                }}
+                markedDates={markedDates}
                 enableSwipeMonths
                 theme={CALENDAR_THEME}
               />
