@@ -81,7 +81,7 @@ export default function PerfilScreen() {
     {
       id: 'account',
       title: 'Mi cuenta',
-      subtitle: 'Cambiar contraseña · Eliminar cuenta',
+      subtitle: 'Cambiar contraseña',
       icon: 'person.circle',
       onPress: () => router.push('/mi-cuenta'),
     },

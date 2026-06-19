@@ -2,14 +2,12 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { auth, db } from "@/firebase";
+import { auth } from "@/firebase";
 import {
-  deleteUser,
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
 } from "firebase/auth";
-import { collection, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -27,8 +25,6 @@ export default function MiCuentaScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
 
   const handleChangePassword = async () => {
     if (!currentPassword) {
@@ -67,60 +63,7 @@ export default function MiCuentaScreen() {
     }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      "Eliminar cuenta",
-      "Esta acción eliminará tu cuenta y todos tus datos de forma permanente. No se puede deshacer.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Eliminar cuenta",
-          style: "destructive",
-          onPress: confirmDeleteAccount,
-        },
-      ]
-    );
-  };
-
-  const confirmDeleteAccount = async () => {
-    if (!deletePassword) {
-      Alert.alert("Error", "Ingresa tu contraseña para confirmar");
-      return;
-    }
-
-    const user = auth.currentUser;
-    if (!user || !user.email) return;
-
-    setIsDeleting(true);
-    try {
-      const credential = EmailAuthProvider.credential(user.email, deletePassword);
-      await reauthenticateWithCredential(user, credential);
-
-      // Delete all user data from Firestore
-      const userId = user.uid;
-      const collections = ["registrosComidas", "feedback", "comidas", "informacionNutricional"];
-      await Promise.all(
-        collections.map(async (col) => {
-          const q = query(collection(db, col), where("userId", "==", userId));
-          const snap = await getDocs(q);
-          return Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
-        })
-      );
-
-      await deleteUser(user);
-      router.replace("/login");
-    } catch (error: any) {
-      const msg =
-        error.code === "auth/wrong-password" || error.code === "auth/invalid-credential"
-          ? "La contraseña es incorrecta"
-          : error.message || "Error desconocido";
-      Alert.alert("Error", msg);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  return (
+return (
     <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -203,40 +146,6 @@ export default function MiCuentaScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Delete account section */}
-        <ThemedText style={[styles.sectionLabel, styles.dangerLabel]} lightColor={MetaFitColors.calificacion.baja}>
-          Zona de peligro
-        </ThemedText>
-        <View style={[styles.card, styles.dangerCard]}>
-          <View style={styles.fieldGroup}>
-            <ThemedText style={styles.fieldLabel} lightColor={MetaFitColors.text.secondary}>
-              Confirma tu contraseña para eliminar la cuenta
-            </ThemedText>
-            <TextInput
-              style={styles.input}
-              value={deletePassword}
-              onChangeText={setDeletePassword}
-              secureTextEntry
-              placeholder="Tu contraseña actual"
-              placeholderTextColor={MetaFitColors.text.tertiary}
-              autoCapitalize="none"
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity
-          style={[styles.dangerButton, isDeleting && styles.buttonDisabled]}
-          onPress={handleDeleteAccount}
-          disabled={isDeleting}
-        >
-          {isDeleting ? (
-            <ActivityIndicator size="small" color={MetaFitColors.text.white} />
-          ) : (
-            <ThemedText style={styles.primaryButtonText} lightColor={MetaFitColors.text.white}>
-              Eliminar mi cuenta
-            </ThemedText>
-          )}
-        </TouchableOpacity>
       </ScrollView>
     </ThemedView>
   );
@@ -286,9 +195,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 8,
   },
-  dangerLabel: {
-    marginTop: 32,
-  },
   card: {
     backgroundColor: MetaFitColors.background.card,
     borderRadius: 16,
@@ -296,10 +202,6 @@ const styles = StyleSheet.create({
     borderColor: MetaFitColors.border.light,
     marginBottom: 16,
     overflow: "hidden",
-  },
-  dangerCard: {
-    borderColor: "rgba(201, 72, 72, 0.25)",
-    backgroundColor: "rgba(201, 72, 72, 0.04)",
   },
   fieldGroup: {
     paddingHorizontal: 16,
@@ -327,17 +229,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
     shadowColor: "#2C3E50",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  dangerButton: {
-    backgroundColor: MetaFitColors.calificacion.baja,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    shadowColor: "#C94848",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
