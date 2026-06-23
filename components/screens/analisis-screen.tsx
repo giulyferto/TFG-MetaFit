@@ -1,11 +1,12 @@
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerConsumosPorRango, type Consumo } from "@/utils/consumos";
+import { obtenerConsumosPorRango, obtenerFechasConConsumos, type Consumo } from "@/utils/consumos";
 import { getNutritionalProfile } from "@/utils/nutritional-profile";
 import { analizarPatronAlimenticio, type AnalizarPatronResponse } from "@/utils/openai";
 import { Image } from "expo-image";
-import { useCallback, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -176,6 +177,13 @@ export function AnalisisScreen() {
   const [isAnalizando, setIsAnalizando]   = useState(false);
   const [resultado, setResultado]         = useState<AnalizarPatronResponse | null>(null);
   const [errorAnalisis, setErrorAnalisis] = useState<string | null>(null);
+  const [datesWithFood, setDatesWithFood] = useState<string[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      obtenerFechasConConsumos().then(setDatesWithFood).catch(() => {});
+    }, [])
+  );
 
   // ── Data loading ─────────────────────────────────────────────────────
   const limpiarResultados = useCallback(() => {
@@ -280,7 +288,17 @@ export function AnalisisScreen() {
   const todayStr   = strFromDate(new Date());
   const numDias    = diffDays(rangeStart, rangeEnd);
   const isRango    = numDias > 1;
-  const markedDates = buildMarkedDates(rangeStart, rangeEnd);
+  const markedDates = useMemo(() => {
+    const marks = buildMarkedDates(rangeStart, rangeEnd);
+    for (const dateStr of datesWithFood) {
+      marks[dateStr] = {
+        ...(marks[dateStr] ?? {}),
+        marked: true,
+        dotColor: MetaFitColors.button.primary,
+      };
+    }
+    return marks;
+  }, [rangeStart, rangeEnd, datesWithFood]);
 
   // Date display label
   const startSameAsEnd = strFromDate(rangeStart) === strFromDate(rangeEnd);
