@@ -3,7 +3,6 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { auth } from "@/firebase";
-import { Image } from "expo-image";
 import { router } from "expo-router";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
@@ -121,11 +120,6 @@ export function RegisterScreen({
     } else {
       router.back();
     }
-  };
-
-  const handleSocialRegister = () => {
-    console.log("Registrar con Google");
-    router.replace("/bienvenida");
   };
 
   return (
@@ -256,31 +250,6 @@ export function RegisterScreen({
         >
           <ThemedText style={styles.registerButtonText} lightColor={MetaFitColors.text.white}>
             {isLoading ? "Creando cuenta..." : "Crear cuenta"}
-          </ThemedText>
-        </TouchableOpacity>
-
-        {/* Separator */}
-        <View style={styles.separatorContainer}>
-          <View style={styles.separatorLine} />
-          <ThemedText style={styles.separatorText} lightColor={MetaFitColors.text.tertiary}>
-            o continúa con
-          </ThemedText>
-          <View style={styles.separatorLine} />
-        </View>
-
-        {/* Social Register */}
-        <TouchableOpacity
-          style={styles.socialButton}
-          onPress={handleSocialRegister}
-          activeOpacity={0.8}
-        >
-          <Image
-            source={require("@/assets/images/google-icon.png")}
-            style={styles.googleIcon}
-            contentFit="contain"
-          />
-          <ThemedText style={styles.socialButtonText} lightColor={MetaFitColors.text.secondary}>
-            Google
           </ThemedText>
         </TouchableOpacity>
 
@@ -422,40 +391,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.2,
-  },
-  separatorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-    gap: 12,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: MetaFitColors.border.light,
-  },
-  separatorText: {
-    fontSize: 13,
-  },
-  socialButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-    paddingVertical: 15,
-    borderRadius: 14,
-    backgroundColor: MetaFitColors.background.card,
-    borderWidth: 1,
-    borderColor: MetaFitColors.border.light,
-    marginBottom: 36,
-  },
-  googleIcon: {
-    width: 20,
-    height: 20,
-  },
-  socialButtonText: {
-    fontSize: 15,
-    fontWeight: "600",
   },
   loginContainer: {
     flexDirection: "row",
