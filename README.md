@@ -1,6 +1,6 @@
 # MetaFit - Aplicación de Nutrición Inteligente
 
-MetaFit es una aplicación móvil desarrollada con React Native y Expo que ayuda a los usuarios a llevar un registro nutricional inteligente mediante análisis de imágenes con IA, escaneo de códigos de barras y feedback nutricional personalizado.
+MetaFit es una aplicación móvil desarrollada con React Native y Expo que ayuda a los usuarios a llevar un registro nutricional inteligente mediante análisis de imágenes con IA, escaneo de códigos de barras, lectura de etiquetas nutricionales y feedback personalizado.
 
 ## 📋 Tabla de Contenidos
 
@@ -11,26 +11,26 @@ MetaFit es una aplicación móvil desarrollada con React Native y Expo que ayuda
 - [Scripts Disponibles](#scripts-disponibles)
 - [Estructura del Proyecto](#estructura-del-proyecto)
 - [Funcionalidades Principales](#funcionalidades-principales)
-- [Despliegue](#despliegue)
+- [Cloud Functions](#cloud-functions)
+- [Tecnologías Utilizadas](#tecnologías-utilizadas)
 
 ## ✨ Características
 
-- 📸 **Análisis de Imágenes con IA**: Toma una foto de tu comida y la IA extrae automáticamente los valores nutricionales
-- 🏷️ **Análisis de Etiquetas Nutricionales**: Escanea o fotografía etiquetas nutricionales para extraer información
-- 📊 **Escaneo de Códigos de Barras**: Busca productos en la base de datos de Open Food Facts
-- 🤖 **Feedback Nutricional Personalizado**: Recibe recomendaciones nutricionales basadas en tus objetivos y perfil
-- 📝 **Registro de Comidas**: Guarda tus comidas en un diario personalizado
-- 📈 **Historial y Estadísticas**: Visualiza tus consumos anteriores con calificaciones nutricionales
-- 👤 **Perfil Nutricional**: Configura tus objetivos, restricciones y preferencias nutricionales
+- 📸 **Análisis de imágenes con IA**: Toma una foto de tu comida y GPT-4o extrae automáticamente los ingredientes y valores nutricionales
+- 🏷️ **Lectura de etiquetas nutricionales**: Fotografía una etiqueta y la IA extrae los datos automáticamente
+- 📊 **Escaneo de códigos de barras**: Busca productos en la base de datos de Open Food Facts
+- ✏️ **Registro manual**: Ingresa los datos nutricionales manualmente
+- 🤖 **Feedback nutricional personalizado**: Recibe análisis y recomendaciones basadas en tu perfil (Muy saludable / Equilibrada / Poco nutritiva)
+- 📈 **Análisis de patrones alimenticios**: Visualiza y analiza tus hábitos en un período de tiempo con calendario interactivo
+- ⭐ **Comidas guardadas**: Guarda plantillas de comidas frecuentes y reagrégalas fácilmente
+- 📄 **Exportar historial**: Exporta tu historial nutricional como PDF
+- 👤 **Perfil nutricional**: Configura objetivos, restricciones dietéticas y datos personales
 
 ## 🔧 Requisitos Previos
 
-Antes de comenzar, asegúrate de tener instalado:
-
 - **Node.js** (versión 18 o superior)
-- **npm** o **pnpm**
-- **Expo CLI** (se instala globalmente con `npm install -g expo-cli`)
-- **Firebase CLI** (para desplegar funciones): `npm install -g firebase-tools`
+- **pnpm** (gestor de paquetes preferido) o npm
+- **Firebase CLI**: `npm install -g firebase-tools`
 - **Cuenta de Firebase** con un proyecto configurado
 - **Cuenta de OpenAI** con una API key
 
@@ -41,15 +41,15 @@ Antes de comenzar, asegúrate de tener instalado:
 
 ## 📦 Instalación
 
-1. **Clonar el repositorio** (si aplica):
+1. **Clonar el repositorio**:
    ```bash
    git clone <url-del-repositorio>
    cd TFG-MetaFit
    ```
 
-2. **Instalar dependencias**:
+2. **Instalar dependencias de la app**:
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Instalar dependencias de Firebase Functions**:
@@ -66,111 +66,69 @@ Antes de comenzar, asegúrate de tener instalado:
 1. Crea un proyecto en [Firebase Console](https://console.firebase.google.com/)
 
 2. Habilita los siguientes servicios:
-   - **Authentication** (con Google Sign-In)
+   - **Authentication** (Email/Password)
    - **Firestore Database**
    - **Cloud Functions**
+   - **Cloud Storage**
+   - **Analytics** (opcional)
 
-3. Obtén las credenciales de Firebase:
-   - Ve a Configuración del Proyecto > Tus aplicaciones
-   - Crea una aplicación web y copia la configuración
+3. Las credenciales ya están configuradas en `firebase.ts`. Si usas tu propio proyecto, actualiza `firebaseConfig` con los valores de tu proyecto.
 
-4. Crea el archivo `firebase.ts` en la raíz del proyecto:
-   ```typescript
-   import { initializeApp } from 'firebase/app';
-   import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-   import { getFirestore } from 'firebase/firestore';
-   import { getFunctions } from 'firebase/functions';
-
-   const firebaseConfig = {
-     apiKey: "TU_API_KEY",
-     authDomain: "TU_AUTH_DOMAIN",
-     projectId: "TU_PROJECT_ID",
-     storageBucket: "TU_STORAGE_BUCKET",
-     messagingSenderId: "TU_MESSAGING_SENDER_ID",
-     appId: "TU_APP_ID"
-   };
-
-   const app = initializeApp(firebaseConfig);
-   export const auth = getAuth(app);
-   export const db = getFirestore(app);
-   export const functions = getFunctions(app);
-   ```
-
-5. **Inicializar Firebase CLI**:
+4. **Inicializar Firebase CLI**:
    ```bash
    firebase login
-   firebase init
+   firebase use tfg-metafit   # o el ID de tu proyecto
    ```
-   - Selecciona Firestore y Functions
-   - Usa el proyecto de Firebase que creaste
 
 ### 2. Configuración de OpenAI
 
-1. Obtén tu API key de OpenAI desde [OpenAI Platform](https://platform.openai.com/api-keys)
+Configura el secret en Firebase Functions:
 
-2. **Configurar el secret en Firebase**:
-   ```bash
-   cd functions
-   firebase functions:secrets:set OPENAI_API_KEY
-   ```
-   Ingresa tu API key cuando se solicite.
+```bash
+cd functions
+firebase functions:secrets:set OPENAI_API_KEY
+```
 
-3. **Desplegar las funciones de Firebase**:
-   ```bash
-   cd functions
-   npm run build
-   firebase deploy --only functions
-   ```
+Ingresa tu API key cuando se solicite. Las funciones usan `gpt-4o` para análisis de imágenes y `gpt-4o-mini` para feedback y consultas de nutrición.
 
-### 3. Configuración de Permisos
+### 3. Desplegar Cloud Functions
 
-La aplicación requiere los siguientes permisos (ya configurados en `app.json`):
-
-- **Cámara**: Para tomar fotos de comida y escanear códigos de barras
-- **Galería**: Para seleccionar imágenes desde la galería
+```bash
+cd functions
+npm run build
+firebase deploy --only functions
+```
 
 ## 🚀 Scripts Disponibles
 
-### Desarrollo
-
 ```bash
 # Iniciar el servidor de desarrollo
-npm start
+pnpm start
 
-# Iniciar con caché limpia (útil después de instalar nuevas dependencias)
+# Con caché limpia (recomendado tras instalar nuevas dependencias)
 npx expo start --clear
 
-# Iniciar en Android
-npm run android
+# iOS / Android / Web
+pnpm ios
+pnpm android
+pnpm web
 
-# Iniciar en iOS
-npm run ios
-
-# Iniciar en Web
-npm run web
-```
-
-### Linting
-
-```bash
-# Ejecutar el linter
-npm run lint
+# Linter
+pnpm lint
 ```
 
 ### Firebase Functions
 
 ```bash
-# Compilar TypeScript
 cd functions
+
+# Compilar TypeScript
 npm run build
 
 # Desplegar todas las funciones
 firebase deploy --only functions
 
-# Desplegar una función específica
-firebase deploy --only functions:generarFeedbackNutricional
-
-# Ver logs de las funciones
+# Ver logs
 firebase functions:log
 ```
 
@@ -178,139 +136,124 @@ firebase functions:log
 
 ```
 TFG-MetaFit/
-├── app/                    # Pantallas y rutas (Expo Router)
-│   ├── (tabs)/           # Navegación por pestañas
-│   ├── registro-comida.tsx
-│   ├── registro-manual.tsx
-│   └── ...
-├── components/            # Componentes reutilizables
-│   ├── formulario-comida/
+├── app/                          # Pantallas y rutas (Expo Router)
+│   ├── (tabs)/                   # Navegación principal por pestañas
+│   │   ├── index.tsx             # Inicio — registro rápido de comidas
+│   │   ├── feedback.tsx          # Historial de consumos
+│   │   ├── analisis.tsx          # Análisis de patrones alimenticios
+│   │   ├── perfil.tsx            # Perfil nutricional del usuario
+│   │   └── configuracion.tsx     # Configuraciones de cuenta
+│   ├── registro-comida.tsx       # Flujo de registro (foto / código de barras / etiqueta)
+│   ├── registro-manual.tsx       # Registro manual de valores nutricionales
+│   ├── comidas-guardadas.tsx     # Plantillas de comidas guardadas
+│   ├── reagregar-comida.tsx      # Re-añadir una comida guardada
+│   ├── editar-registro.tsx       # Editar un consumo existente
+│   ├── exportar-historial.tsx    # Exportar historial como PDF
+│   ├── ingredientes.tsx          # Detalle de ingredientes de una comida
+│   ├── info-nutricional.tsx      # Información nutricional detallada
+│   ├── feedback.tsx              # Vista individual de feedback
+│   ├── login.tsx                 # Login con email/contraseña
+│   ├── register.tsx              # Registro de nueva cuenta
+│   └── bienvenida.tsx            # Pantalla de bienvenida
+├── components/
+│   ├── screens/                  # Componentes de pantalla completa
+│   ├── formulario-comida/        # Formulario de datos de comida
 │   ├── formulario-info-nutricional/
-│   ├── screens/
-│   ├── tabla-consumos/
-│   └── ui/
-├── constants/            # Constantes y temas
-├── functions/            # Firebase Cloud Functions
+│   ├── tabla-consumos/           # Lista de consumos con paginación
+│   ├── BarcodeScannerOverlay.tsx # Overlay para escaneo de código de barras
+│   └── ui/                       # Componentes UI reutilizables
+├── functions/
 │   └── src/
-│       └── index.ts     # Funciones de OpenAI y análisis
-├── hooks/               # Custom hooks
-├── utils/               # Utilidades y funciones helper
-│   ├── comidas.ts      # Gestión de comidas
-│   ├── consumos.ts     # Gestión de consumos
-│   ├── feedback.ts     # Gestión de feedback
-│   ├── image.ts        # Utilidades de imágenes
-│   ├── openai.ts       # Cliente de OpenAI
-│   └── nutritional-profile.ts
-├── assets/             # Imágenes y recursos
-└── firebase.ts         # Configuración de Firebase
+│       └── index.ts              # Cloud Functions (OpenAI + Firebase)
+├── hooks/                        # Custom hooks de React
+├── utils/
+│   ├── comidas.ts                # CRUD de comidas y plantillas
+│   ├── consumos.ts               # CRUD de registros de consumo
+│   ├── feedback.ts               # Generación y lectura de feedback
+│   ├── ingredientes.ts           # Gestión de ingredientes
+│   ├── image.ts                  # Captura y procesamiento de imágenes
+│   ├── storage.ts                # Subida de imágenes a Firebase Storage
+│   ├── open-food-facts.ts        # Cliente de Open Food Facts API
+│   ├── openai.ts                 # Llamadas a las Cloud Functions de OpenAI
+│   ├── nutritional-profile.ts    # Perfil nutricional del usuario
+│   ├── nav-state.ts              # Estado de navegación compartido
+│   └── validation.ts             # Validaciones de formularios
+├── constants/                    # Temas y constantes
+├── assets/                       # Imágenes y recursos estáticos
+└── firebase.ts                   # Inicialización de Firebase
 ```
 
 ## 🎯 Funcionalidades Principales
 
-### 1. Registro de Comidas
+### 📸 Registro de Comidas
 
-- **Registro Manual**: Ingresa manualmente los valores nutricionales
-- **Análisis de Imagen**: Toma una foto de tu comida y la IA extrae los datos
-- **Análisis de Etiqueta**: Escanea o fotografía etiquetas nutricionales
-- **Escaneo de Código de Barras**: Busca productos en Open Food Facts
+Cuatro métodos de ingreso accesibles desde la pantalla de inicio:
 
-### 2. Feedback Nutricional
+- **Foto de comida**: La IA analiza la imagen, detecta ingredientes y calcula los macronutrientes totales
+- **Etiqueta nutricional**: Foto de una etiqueta; GPT-4o extrae los valores directamente
+- **Código de barras**: Escanea el código del producto y se busca en Open Food Facts
+- **Manual**: Ingreso directo de nombre, cantidad y valores nutricionales
 
-- Análisis personalizado basado en tu perfil nutricional
-- Calificaciones: Alta, Media, Baja
-- Recomendaciones específicas para mejorar tu alimentación
-- Considera el tipo de comida (Desayuno, Almuerzo, Cena, etc.)
+### 📋 Historial de Consumos
 
-### 3. Historial y Estadísticas
+- Lista paginada de todos los registros
+- Calificación con colores: **Muy saludable**, **Equilibrada**, **Poco nutritiva**
+- Ver feedback detallado, ingredientes y valores nutricionales por registro
+- Editar o eliminar registros existentes
+- Exportar historial a PDF
 
-- Visualiza tus consumos anteriores
-- Filtra por fecha
-- Paginación de resultados
-- Calificaciones nutricionales con colores
+### ⭐ Comidas Guardadas
 
-### 4. Perfil Nutricional
+- Guarda cualquier comida registrada como plantilla
+- Reagrega comidas frecuentes desde la pantalla dedicada
+- Ajusta la cantidad antes de agregar al diario
 
-- Configura tus objetivos (perder peso, ganar masa, etc.)
-- Establece restricciones alimentarias
-- Define preferencias nutricionales
-- Personaliza tu perfil con edad, peso, altura, etc.
+### 📈 Análisis de Patrones Alimenticios
 
-## 🚢 Despliegue
+- Calendario interactivo que resalta los días con registros
+- Selección de período de fechas para análisis
+- GPT-4o-mini analiza los patrones y genera recomendaciones personalizadas
 
-### Desarrollo
+### 👤 Perfil Nutricional
 
-Para desarrollo local, simplemente ejecuta:
-```bash
-npm start
-```
+- Edad, sexo, altura, peso y nivel de actividad física
+- Objetivos (bajar de peso, ganar masa muscular, mantenimiento, etc.)
+- Preferencias y restricciones alimentarias (vegetariano, sin gluten, etc.)
+- El perfil se usa como contexto en cada análisis de feedback
 
-Luego escanea el código QR con la app Expo Go en tu dispositivo móvil.
+## ☁️ Cloud Functions
 
-### Producción
+Todas las funciones son `onCall` de Firebase Functions v2 y requieren autenticación:
 
-#### Android
+| Función | Modelo | Descripción |
+|---|---|---|
+| `generarFeedbackNutricional` | gpt-4o-mini | Analiza una comida y genera feedback textual con calificación |
+| `analizarImagenComida` | gpt-4o | Detecta plato/ingredientes en una foto y estima valores nutricionales |
+| `leerEtiquetaNutricional` | gpt-4o | Extrae datos nutricionales de una foto de etiqueta |
+| `analizarCodigoBarras` | gpt-4o | Lee el código de barras de una imagen como fallback |
+| `obtenerNutricionIngrediente` | gpt-4o-mini | Consulta los macronutrientes estimados de un ingrediente |
+| `analizarPatronAlimenticio` | gpt-4o-mini | Analiza el historial de consumos en un período y detecta patrones |
 
-1. **Generar APK/AAB**:
-   ```bash
-   eas build --platform android
-   ```
-
-2. O usa:
-   ```bash
-   npx expo build:android
-   ```
-
-#### iOS
-
-1. **Generar IPA**:
-   ```bash
-   eas build --platform ios
-   ```
-
-2. O usa:
-   ```bash
-   npx expo build:ios
-   ```
-
-### Firebase Functions
-
-Las funciones se despliegan automáticamente cuando ejecutas:
-```bash
-cd functions
-firebase deploy --only functions
-```
-
-## 🔐 Variables de Entorno
-
-Las siguientes configuraciones se manejan a través de Firebase Secrets:
-
-- `OPENAI_API_KEY`: API key de OpenAI (configurada en Firebase Secrets)
-
-## 📝 Notas Importantes
-
-- **Índices de Firestore**: Algunas consultas pueden requerir índices compuestos. Firebase te proporcionará un enlace para crearlos automáticamente cuando sea necesario.
-
-- **Permisos de Cámara**: Asegúrate de que los permisos estén configurados correctamente en `app.json` y que el usuario los conceda en la primera ejecución.
-
-- **Límites de OpenAI**: Ten en cuenta los límites de uso de la API de OpenAI para evitar costos inesperados.
+La API key de OpenAI se gestiona como secret de Firebase (`OPENAI_API_KEY`), nunca en el cliente.
 
 ## 🛠️ Tecnologías Utilizadas
 
-- **React Native**: Framework para desarrollo móvil
-- **Expo**: Plataforma y herramientas para React Native
-- **TypeScript**: Tipado estático
-- **Firebase**: Backend como servicio (Auth, Firestore, Functions)
-- **OpenAI API**: Análisis de imágenes y generación de feedback
-- **Open Food Facts**: Base de datos de productos alimenticios
+- **React Native + Expo** (~54): Framework y plataforma móvil
+- **Expo Router** (~6): Navegación basada en el sistema de archivos
+- **TypeScript**: Tipado estático en toda la aplicación
+- **Firebase v12**: Auth, Firestore, Cloud Functions, Storage, Analytics
+- **OpenAI API**: GPT-4o (análisis visual) y GPT-4o-mini (texto/nutrición)
+- **Open Food Facts**: Base de datos pública de productos alimenticios
+- **react-native-calendars**: Selector de fechas en la pantalla de análisis
+- **react-native-markdown-display**: Renderizado del feedback en formato markdown
+- **expo-print + expo-sharing**: Exportación del historial a PDF
+
+## 📝 Notas
+
+- **Índices de Firestore**: Algunas consultas requieren índices compuestos definidos en `firestore.indexes.json`. Firebase genera automáticamente el enlace para crearlos si aún no existen.
+- **Permisos**: La app solicita acceso a cámara y galería en tiempo de ejecución (configurado en `app.json`).
+- **Costos de OpenAI**: Cada análisis de imagen con GPT-4o consume tokens de visión. Monitoriza el uso desde el dashboard de OpenAI.
 
 ## 📄 Licencia
 
 Este proyecto es parte de un Trabajo de Fin de Grado (TFG).
-
-## 👥 Autor
-
-Desarrollado como parte del Trabajo de Fin de Grado.
-
----
-
-Para más información sobre Expo, visita la [documentación oficial](https://docs.expo.dev/).
