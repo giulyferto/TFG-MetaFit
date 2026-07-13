@@ -13,7 +13,6 @@ const RESTRICCIONES_NUTRICIONALES = [
   "Trigo",
   "Gluten",
   "Pescado",
-  "Carne",
   "Carnes rojas",
   "Carnes blancas",
 ] as const;

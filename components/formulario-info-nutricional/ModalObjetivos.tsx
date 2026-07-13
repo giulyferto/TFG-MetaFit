@@ -1,6 +1,12 @@
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { Modal, Pressable, ScrollView, TouchableOpacity, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { estilos } from "./estilos";
 
 const OBJETIVOS_NUTRICIONALES = [
@@ -10,9 +16,6 @@ const OBJETIVOS_NUTRICIONALES = [
   "Ganar masa muscular",
   "Mejorar condición física",
   "Reducir grasa corporal",
-  "Aumentar energía",
-  "Mejorar digestión",
-  "Mejorar rendimiento deportivo",
   "Alimentación saludable",
 ] as const;
 
@@ -38,10 +41,7 @@ export function ModalObjetivos({
       animationType="fade"
       onRequestClose={onCerrar}
     >
-      <Pressable
-        style={estilos.overlayModal}
-        onPress={onCerrar}
-      >
+      <Pressable style={estilos.overlayModal} onPress={onCerrar}>
         <View
           style={estilos.contenidoModal}
           onStartShouldSetResponder={() => true}
@@ -106,4 +106,3 @@ export function ModalObjetivos({
     </Modal>
   );
 }
-

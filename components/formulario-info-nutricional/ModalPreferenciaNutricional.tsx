@@ -9,11 +9,9 @@ const PREFERENCIAS_NUTRICIONALES = [
   "Omnívora",
   "Paleo",
   "Keto",
-  "Mediterránea",
   "Sin gluten",
   "Sin lactosa",
   "Pescetariana",
-  "Flexitariana",
 ] as const;
 
 export type PreferenciaNutricional = (typeof PREFERENCIAS_NUTRICIONALES)[number];
