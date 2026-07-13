@@ -1,11 +1,11 @@
-import { DetallesComidaCard, type DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
+import { DetallesComidaCard, type DatosComida } from "@/features/shared/components/DetallesComidaCard";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { guardarComidaComoPlantilla, guardarComidaEnDiario, type IngredienteGuardado } from "@/utils/comidas";
-import { consumePendingImagenUrl, setPendingImagenUrl } from "@/utils/nav-state";
-import { obtenerNutricionIngrediente } from "@/utils/openai";
+import { guardarComidaComoPlantilla, guardarComidaEnDiario, type IngredienteGuardado } from "@/features/shared/utils/comidas";
+import { consumePendingImagenUrl, setPendingImagenUrl } from "@/features/shared/utils/nav-state";
+import { obtenerNutricionIngrediente } from "@/features/shared/utils/openai";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";

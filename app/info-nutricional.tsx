@@ -1,7 +1,7 @@
 import {
   FormularioInfoNutricional,
   type DatosFormularioNutricional,
-} from "@/components/formulario-info-nutricional";
+} from "@/features/formulario-info-nutricional";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
@@ -20,7 +20,7 @@ export default function PantallaInfoNutricional() {
     const user = auth.currentUser;
     if (user) {
       // Verificar si tiene perfil completo
-      const { hasCompleteNutritionalProfile } = await import('@/utils/nutritional-profile');
+      const { hasCompleteNutritionalProfile } = await import('@/features/shared/utils/nutritional-profile');
       const hasProfile = await hasCompleteNutritionalProfile();
       
       if (hasProfile) {

@@ -1,4 +1,4 @@
-import type { DatosFormularioNutricional } from "@/components/formulario-info-nutricional";
+import type { DatosFormularioNutricional } from "@/features/formulario-info-nutricional";
 import { useEffect, useMemo, useState } from "react";
 
 export function useFormularioNutricional(initialData?: Partial<DatosFormularioNutricional>) {

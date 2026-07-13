@@ -1,11 +1,9 @@
-import { RegisterScreen } from '@/components/screens/register-screen';
+import { RegisterScreen } from '@/features/auth/screens/register-screen';
 import { router } from 'expo-router';
 
 export default function RegisterPage() {
   const handleRegisterPress = () => {
-    // Aquí irá la lógica de registro cuando se integre Firebase
-    // Por ahora, navegamos a la pantalla de bienvenida
-    router.replace('/bienvenida');
+    router.replace('/info-nutricional');
   };
 
   const handleLoginPress = () => {

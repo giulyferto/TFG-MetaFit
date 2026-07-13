@@ -1,5 +1,5 @@
 import { auth, db } from "@/firebase";
-import type { IngredienteGuardado } from "@/utils/comidas";
+import type { IngredienteGuardado } from "@/features/shared/utils/comidas";
 import { QueryDocumentSnapshot, collection, deleteDoc, doc, getDocs, limit, orderBy, query, startAfter, updateDoc, where } from "firebase/firestore";
 
 export type Consumo = {

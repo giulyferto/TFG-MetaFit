@@ -1,4 +1,4 @@
-import type { IngredienteIA } from "./openai";
+import type { IngredienteIA } from "@/features/shared/utils/openai";
 
 export type Ingrediente = {
   id: string;

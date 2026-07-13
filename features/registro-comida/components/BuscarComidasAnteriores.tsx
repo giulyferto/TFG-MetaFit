@@ -1,7 +1,7 @@
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerComidasAnteriores, type ComidaAnterior } from "@/utils/comidas";
+import { obtenerComidasAnteriores, type ComidaAnterior } from "@/features/shared/utils/comidas";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,

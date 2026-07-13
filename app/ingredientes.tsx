@@ -7,12 +7,12 @@ import {
   calcularTotales,
   ingredienteDesdeIA,
   type Ingrediente,
-} from "@/utils/ingredientes";
-import { BarcodeScannerOverlay } from "@/components/BarcodeScannerOverlay";
-import { asegurarBase64Jpeg, asegurarBase64JpegBarras, asegurarBase64JpegTabla, seleccionarImagen } from "@/utils/image";
+} from "@/features/ingredientes/utils/ingredientes";
+import { BarcodeScannerOverlay } from "@/features/ingredientes/components/BarcodeScannerOverlay";
+import { asegurarBase64Jpeg, asegurarBase64JpegBarras, asegurarBase64JpegTabla, seleccionarImagen } from "@/features/shared/utils/image";
 import * as ImagePicker from "expo-image-picker";
-import { buscarProductoPorEAN } from "@/utils/open-food-facts";
-import { leerEANDeImagen, leerEtiquetaNutricional, obtenerNutricionIngrediente } from "@/utils/openai";
+import { buscarProductoPorEAN } from "@/features/ingredientes/utils/open-food-facts";
+import { leerEANDeImagen, leerEtiquetaNutricional, obtenerNutricionIngrediente } from "@/features/shared/utils/openai";
 import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {

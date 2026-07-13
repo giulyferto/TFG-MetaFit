@@ -3,7 +3,7 @@ import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
 import { auth } from "@/firebase";
-import { hasCompleteNutritionalProfile } from "@/utils/nutritional-profile";
+import { hasCompleteNutritionalProfile } from "@/features/shared/utils/nutritional-profile";
 import { router } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";

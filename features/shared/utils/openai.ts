@@ -1,4 +1,4 @@
-import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
+import type { DatosComida } from "@/features/shared/components/DetallesComidaCard";
 import { functions } from "@/firebase";
 import { httpsCallable } from "firebase/functions";
 import type { IngredienteGuardado } from "./comidas";

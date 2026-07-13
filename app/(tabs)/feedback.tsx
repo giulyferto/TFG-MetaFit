@@ -1,4 +1,4 @@
-import { FeedbackListScreen } from '@/components/screens/feedback-list-screen';
+import { FeedbackListScreen } from '@/features/historial/screens/feedback-list-screen';
 
 export default function FeedbackTabScreen() {
   return <FeedbackListScreen />;

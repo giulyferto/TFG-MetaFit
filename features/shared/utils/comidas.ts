@@ -1,7 +1,7 @@
-import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
+import type { DatosComida } from "@/features/shared/components/DetallesComidaCard";
 import { auth, db } from "@/firebase";
 import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from "firebase/firestore";
-import { subirImagenComida } from "./storage";
+import { subirImagenComida } from "@/features/historial/utils/storage";
 
 export type ComidaAnterior = {
   id: string;

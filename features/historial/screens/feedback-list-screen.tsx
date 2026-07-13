@@ -1,4 +1,4 @@
-import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
+import { TablaConsumos } from "@/features/shared/components/TablaConsumos";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
@@ -9,8 +9,8 @@ import {
   obtenerResumenNutricionalDelDia,
   type Consumo,
   type ResumenNutricional,
-} from "@/utils/consumos";
-import { setPendingImagenUrl } from "@/utils/nav-state";
+} from "@/features/shared/utils/consumos";
+import { setPendingImagenUrl } from "@/features/shared/utils/nav-state";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Alert, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";

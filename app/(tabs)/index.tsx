@@ -1,6 +1,6 @@
-import { HomeScreen } from '@/components/screens/home-screen';
+import { HomeScreen } from '@/features/home/screens/home-screen';
 import { auth } from '@/firebase';
-import { hasCompleteNutritionalProfile } from '@/utils/nutritional-profile';
+import { hasCompleteNutritionalProfile } from '@/features/shared/utils/nutritional-profile';
 import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect, useState } from 'react';

@@ -1,8 +1,8 @@
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import type { Consumo } from "@/utils/consumos";
-import { obtenerFeedbackDeRegistro } from "@/utils/feedback";
+import type { Consumo } from "@/features/shared/utils/consumos";
+import { obtenerFeedbackDeRegistro } from "@/features/shared/utils/feedback";
 import { Image } from "expo-image";
 import { useEffect, useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";

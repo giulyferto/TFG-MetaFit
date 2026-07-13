@@ -1,6 +1,6 @@
-import { RegistroComidaScreen } from '@/components/screens/registro-comida-screen';
-import { asegurarBase64Jpeg, seleccionarImagen } from '@/utils/image';
-import { analizarImagenComida } from '@/utils/openai';
+import { RegistroComidaScreen } from '@/features/registro-comida/screens/registro-comida-screen';
+import { asegurarBase64Jpeg, seleccionarImagen } from '@/features/shared/utils/image';
+import { analizarImagenComida } from '@/features/shared/utils/openai';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, View } from 'react-native';

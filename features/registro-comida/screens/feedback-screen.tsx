@@ -1,10 +1,10 @@
-import type { DatosComida } from "@/components/formulario-comida/DetallesComidaCard";
-import type { IngredienteGuardado } from "@/utils/comidas";
+import type { DatosComida } from "@/features/shared/components/DetallesComidaCard";
+import type { IngredienteGuardado } from "@/features/shared/utils/comidas";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { guardarFeedback } from "@/utils/feedback";
-import { generarFeedbackNutricional } from "@/utils/openai";
+import { guardarFeedback } from "@/features/shared/utils/feedback";
+import { generarFeedbackNutricional } from "@/features/shared/utils/openai";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";

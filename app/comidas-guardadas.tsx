@@ -7,8 +7,8 @@ import {
   guardarComidaComoPlantilla,
   obtenerComidasAnteriores,
   type ComidaAnterior,
-} from '@/utils/comidas';
-import { obtenerConsumosPaginados, type Consumo } from '@/utils/consumos';
+} from '@/features/shared/utils/comidas';
+import { obtenerConsumosPaginados, type Consumo } from '@/features/shared/utils/consumos';
 import type { QueryDocumentSnapshot } from 'firebase/firestore';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';

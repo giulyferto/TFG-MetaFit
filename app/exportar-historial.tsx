@@ -2,7 +2,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerConsumosPorRango, type Consumo } from "@/utils/consumos";
+import { obtenerConsumosPorRango, type Consumo } from "@/features/shared/utils/consumos";
 import * as Print from "expo-print";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";

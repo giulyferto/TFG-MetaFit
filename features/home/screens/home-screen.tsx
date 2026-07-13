@@ -1,13 +1,26 @@
-import { TablaConsumos } from "@/components/tabla-consumos/TablaConsumos";
+import { TablaConsumos } from "@/features/shared/components/TablaConsumos";
 import { ThemedText } from "@/components/ui/themed-text";
 import { ThemedView } from "@/components/ui/themed-view";
 import { MetaFitColors } from "@/constants/theme";
-import { eliminarRegistroComida, obtenerResumenNutricionalDelDia, obtenerUltimosConsumos, type Consumo, type ResumenNutricional } from "@/utils/consumos";
-import { setPendingImagenUrl } from "@/utils/nav-state";
+import {
+  eliminarRegistroComida,
+  obtenerResumenNutricionalDelDia,
+  obtenerUltimosConsumos,
+  type Consumo,
+  type ResumenNutricional,
+} from "@/features/shared/utils/consumos";
+import { setPendingImagenUrl } from "@/features/shared/utils/nav-state";
 import { Image } from "expo-image";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Platform, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HomeScreenProps = {
@@ -43,7 +56,7 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
   useFocusEffect(
     useCallback(() => {
       cargarConsumos();
-    }, [cargarConsumos])
+    }, [cargarConsumos]),
   );
 
   const handleCargarComidaPress = () => {
@@ -68,9 +81,10 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
         fibra: consumo.fibra || "",
         grasa: consumo.grasa || "",
         tipoComida: consumo.tipoComida || "",
-        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
-          ? JSON.stringify(consumo.ingredientes)
-          : "",
+        ingredientesJson:
+          consumo.ingredientes && consumo.ingredientes.length > 0
+            ? JSON.stringify(consumo.ingredientes)
+            : "",
       },
     });
   };
@@ -88,9 +102,10 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
         fibra: consumo.fibra || "",
         grasa: consumo.grasa || "",
         tipoComida: consumo.tipoComida || "",
-        ingredientesJson: consumo.ingredientes && consumo.ingredientes.length > 0
-          ? JSON.stringify(consumo.ingredientes)
-          : "",
+        ingredientesJson:
+          consumo.ingredientes && consumo.ingredientes.length > 0
+            ? JSON.stringify(consumo.ingredientes)
+            : "",
       },
     });
   };
@@ -100,17 +115,29 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
       await eliminarRegistroComida(id);
       await cargarConsumos();
     } catch (error: any) {
-      Alert.alert("Error", `No se pudo eliminar: ${error.message || "Error desconocido"}`);
+      Alert.alert(
+        "Error",
+        `No se pudo eliminar: ${error.message || "Error desconocido"}`,
+      );
     }
   };
 
   const totalConsumos = todosLosConsumos.length;
 
   return (
-    <ThemedView style={styles.container} lightColor={MetaFitColors.background.white}>
+    <ThemedView
+      style={styles.container}
+      lightColor={MetaFitColors.background.white}
+    >
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 59 : 24) + 16 }]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop:
+              Math.max(insets.top, Platform.OS === "ios" ? 59 : 24) + 16,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerSection}>
@@ -120,10 +147,16 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
             contentFit="contain"
           />
           <View>
-            <ThemedText style={styles.greeting} lightColor={MetaFitColors.text.secondary}>
+            <ThemedText
+              style={styles.greeting}
+              lightColor={MetaFitColors.text.secondary}
+            >
               Bienvenido a
             </ThemedText>
-            <ThemedText style={styles.appTitle} lightColor={MetaFitColors.text.primary}>
+            <ThemedText
+              style={styles.appTitle}
+              lightColor={MetaFitColors.text.primary}
+            >
               MetaFit
             </ThemedText>
           </View>
@@ -131,42 +164,69 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
 
         {!isLoading && (
           <View style={styles.macroCard}>
-            <ThemedText style={styles.macroCardTitle} lightColor={MetaFitColors.text.secondary}>
+            <ThemedText
+              style={styles.macroCardTitle}
+              lightColor={MetaFitColors.text.secondary}
+            >
               Hoy
             </ThemedText>
             <View style={styles.macroRow}>
               <View style={styles.macroItem}>
-                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.button.primary}>
+                <ThemedText
+                  style={styles.macroValue}
+                  lightColor={MetaFitColors.button.primary}
+                >
                   {Math.round(resumenHoy?.energia ?? 0)}
                 </ThemedText>
-                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                <ThemedText
+                  style={styles.macroLabel}
+                  lightColor={MetaFitColors.text.secondary}
+                >
                   kcal
                 </ThemedText>
               </View>
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
-                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                <ThemedText
+                  style={styles.macroValue}
+                  lightColor={MetaFitColors.text.primary}
+                >
                   {Math.round(resumenHoy?.carb ?? 0)}g
                 </ThemedText>
-                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                <ThemedText
+                  style={styles.macroLabel}
+                  lightColor={MetaFitColors.text.secondary}
+                >
                   Carbos
                 </ThemedText>
               </View>
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
-                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                <ThemedText
+                  style={styles.macroValue}
+                  lightColor={MetaFitColors.text.primary}
+                >
                   {Math.round(resumenHoy?.proteina ?? 0)}g
                 </ThemedText>
-                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                <ThemedText
+                  style={styles.macroLabel}
+                  lightColor={MetaFitColors.text.secondary}
+                >
                   Proteína
                 </ThemedText>
               </View>
               <View style={styles.macroDivider} />
               <View style={styles.macroItem}>
-                <ThemedText style={styles.macroValue} lightColor={MetaFitColors.text.primary}>
+                <ThemedText
+                  style={styles.macroValue}
+                  lightColor={MetaFitColors.text.primary}
+                >
                   {Math.round(resumenHoy?.grasa ?? 0)}g
                 </ThemedText>
-                <ThemedText style={styles.macroLabel} lightColor={MetaFitColors.text.secondary}>
+                <ThemedText
+                  style={styles.macroLabel}
+                  lightColor={MetaFitColors.text.secondary}
+                >
                   Grasa
                 </ThemedText>
               </View>
@@ -183,7 +243,10 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
             <View style={styles.buttonIconCircle}>
               <ThemedText style={styles.buttonIcon}>+</ThemedText>
             </View>
-            <ThemedText style={styles.cargarComidaButtonText} lightColor={MetaFitColors.text.white}>
+            <ThemedText
+              style={styles.cargarComidaButtonText}
+              lightColor={MetaFitColors.text.white}
+            >
               Registrar comida
             </ThemedText>
           </View>
@@ -191,12 +254,18 @@ export function HomeScreen({ onCargarComidaPress }: HomeScreenProps) {
 
         {/* Consumos section */}
         <View style={styles.sectionHeader}>
-          <ThemedText style={styles.sectionTitle} lightColor={MetaFitColors.text.primary}>
+          <ThemedText
+            style={styles.sectionTitle}
+            lightColor={MetaFitColors.text.primary}
+          >
             Últimos consumos
           </ThemedText>
           {totalConsumos > 0 && (
             <View style={styles.countBadge}>
-              <ThemedText style={styles.countBadgeText} lightColor={MetaFitColors.text.secondary}>
+              <ThemedText
+                style={styles.countBadgeText}
+                lightColor={MetaFitColors.text.secondary}
+              >
                 {totalConsumos}
               </ThemedText>
             </View>

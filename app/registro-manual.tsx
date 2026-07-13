@@ -1,6 +1,6 @@
-import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
-import { RegistroManualScreen } from '@/components/screens/registro-manual-screen';
-import type { IngredienteGuardado } from '@/utils/comidas';
+import type { DatosComida } from '@/features/shared/components/DetallesComidaCard';
+import { RegistroManualScreen } from '@/features/registro-comida/screens/registro-manual-screen';
+import type { IngredienteGuardado } from '@/features/shared/utils/comidas';
 import { router, useLocalSearchParams } from 'expo-router';
 
 export default function RegistroManualPage() {

@@ -1,4 +1,4 @@
-import { LandingScreen } from '@/components/screens/landing-screen';
+import { LandingScreen } from '@/features/auth/screens/landing-screen';
 import { router } from 'expo-router';
 
 export default function IndexPage() {

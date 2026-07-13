@@ -1,7 +1,7 @@
-import type { DatosComida } from '@/components/formulario-comida/DetallesComidaCard';
-import { FeedbackScreen } from '@/components/screens/feedback-screen';
-import type { IngredienteGuardado } from '@/utils/comidas';
-import { consumePendingImagenUrl } from '@/utils/nav-state';
+import type { DatosComida } from '@/features/shared/components/DetallesComidaCard';
+import { FeedbackScreen } from '@/features/registro-comida/screens/feedback-screen';
+import type { IngredienteGuardado } from '@/features/shared/utils/comidas';
+import { consumePendingImagenUrl } from '@/features/shared/utils/nav-state';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Stack } from 'expo-router';
 import { useState } from 'react';

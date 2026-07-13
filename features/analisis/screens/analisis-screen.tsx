@@ -1,9 +1,9 @@
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { obtenerConsumosPorRango, obtenerFechasConConsumos, type Consumo } from "@/utils/consumos";
-import { getNutritionalProfile } from "@/utils/nutritional-profile";
-import { analizarPatronAlimenticio, type AnalizarPatronResponse } from "@/utils/openai";
+import { obtenerConsumosPorRango, obtenerFechasConConsumos, type Consumo } from "@/features/shared/utils/consumos";
+import { getNutritionalProfile } from "@/features/shared/utils/nutritional-profile";
+import { analizarPatronAlimenticio, type AnalizarPatronResponse } from "@/features/shared/utils/openai";
 import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useMemo, useRef, useState } from "react";

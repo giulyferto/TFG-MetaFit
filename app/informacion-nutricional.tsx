@@ -2,13 +2,13 @@ import {
   FormularioInfoNutricional,
   type DatosFormularioNutricional,
   type FormularioInfoNutricionalRef,
-} from '@/components/formulario-info-nutricional';
+} from '@/features/formulario-info-nutricional';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { ThemedText } from '@/components/ui/themed-text';
 import { ThemedView } from '@/components/ui/themed-view';
 import { MetaFitColors } from '@/constants/theme';
 import { auth, db } from '@/firebase';
-import { getNutritionalProfile } from '@/utils/nutritional-profile';
+import { getNutritionalProfile } from '@/features/shared/utils/nutritional-profile';
 import { useRouter } from 'expo-router';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useEffect, useRef, useState } from 'react';

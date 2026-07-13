@@ -1,6 +1,6 @@
 import { ThemedText } from "@/components/ui/themed-text";
 import { MetaFitColors } from "@/constants/theme";
-import { useFormularioNutricional } from "@/hooks/useFormularioNutricional";
+import { useFormularioNutricional } from "@/features/formulario-info-nutricional/useFormularioNutricional";
 import { forwardRef, useImperativeHandle } from "react";
 import { ScrollView, TouchableOpacity, View } from "react-native";
 import { InputAltura } from "./InputAltura";
