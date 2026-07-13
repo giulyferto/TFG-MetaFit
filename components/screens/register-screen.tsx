@@ -38,7 +38,12 @@ export function RegisterScreen({
   };
 
   const validatePassword = (password: string): boolean => {
-    return password.length >= 6;
+    const hasMinLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+    return hasMinLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
   };
 
   const handleRegisterPress = async () => {
@@ -60,7 +65,9 @@ export function RegisterScreen({
     }
 
     if (!validatePassword(password)) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setError(
+        "La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial"
+      );
       return;
     }
 
@@ -98,7 +105,7 @@ export function RegisterScreen({
           errorMessage = "El formato del email no es válido.";
           break;
         case "auth/weak-password":
-          errorMessage = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
+          errorMessage = "La contraseña es muy débil. Revisa los requisitos mínimos.";
           break;
         case "auth/network-request-failed":
           errorMessage = "Error de conexión. Verifica tu internet.";
@@ -181,7 +188,7 @@ export function RegisterScreen({
           <View style={[styles.inputWrapper, styles.passwordWrapper]}>
             <TextInput
               style={styles.passwordInput}
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mín. 8 caracteres, mayúscula, número y símbolo"
               placeholderTextColor={MetaFitColors.text.tertiary}
               value={password}
               onChangeText={setPassword}

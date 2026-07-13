@@ -26,13 +26,25 @@ export default function MiCuentaScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
+  const validatePassword = (password: string): boolean => {
+    const hasMinLength = password.length >= 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+    return hasMinLength && hasUpperCase && hasLowerCase && hasNumber && hasSpecialChar;
+  };
+
   const handleChangePassword = async () => {
     if (!currentPassword) {
       Alert.alert("Error", "Ingresa tu contraseña actual");
       return;
     }
-    if (newPassword.length < 6) {
-      Alert.alert("Error", "La nueva contraseña debe tener al menos 6 caracteres");
+    if (!validatePassword(newPassword)) {
+      Alert.alert(
+        "Error",
+        "La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial"
+      );
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -110,7 +122,7 @@ return (
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Mín. 8 caracteres, mayúscula, número y símbolo"
               placeholderTextColor={MetaFitColors.text.tertiary}
               autoCapitalize="none"
             />
