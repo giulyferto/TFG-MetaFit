@@ -490,7 +490,7 @@ export function TablaConsumos({
                 </View>
               ) : (
                 <Markdown style={markdownStyles}>
-                  {feedbackTexto.replace(/\n*Calificaci[oó]n:\s*\[?(Muy[_ ]saludable|Equilibrada|Poco[_ ]nutritiv[ao]|Alta|Media|Baja)\]?\s*$/i, "").trim()}
+                  {feedbackTexto.replace(/\n*Puntuaci[oó]n:\s*\[?\d{1,3}\]?\s*$/i, "").trim()}
                 </Markdown>
               )}
             </ScrollView>

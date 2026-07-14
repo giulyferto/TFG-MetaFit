@@ -8,7 +8,14 @@ import {
   ConsumoParaAnalisis,
   PerfilNutricional,
 } from "./types";
-import { extraerCalificacion } from "./utils";
+import { calificacionDesdePuntuacion } from "./utils";
+
+function sumarCampo(
+  consumos: ConsumoParaAnalisis[],
+  campo: "energia" | "carb" | "proteina" | "fibra" | "grasa"
+): number {
+  return consumos.reduce((acc, c) => acc + (parseFloat(c[campo] || "0") || 0), 0);
+}
 
 function construirPromptPatron(
   consumos: ConsumoParaAnalisis[],
@@ -16,18 +23,43 @@ function construirPromptPatron(
   perfil?: PerfilNutricional
 ): string {
   let prompt = `Analiza el patrón alimenticio de este período: ${rangoFechas}\n\n`;
-  prompt += `**Registros de comida (${consumos.length} en total):**\n`;
-  consumos.forEach((c, i) => {
+
+  const porDia = new Map<string, ConsumoParaAnalisis[]>();
+  for (const c of consumos) {
     const fecha = c.fechaCreacion.slice(0, 10);
-    const hora = c.fechaCreacion.slice(11, 16);
-    const kcal = c.energia ? `${c.energia} kcal` : "sin dato kcal";
-    const carbs = c.carb ? `C:${c.carb}g` : "";
-    const prot = c.proteina ? `P:${c.proteina}g` : "";
-    const grasas = c.grasa ? `G:${c.grasa}g` : "";
-    const macros = [carbs, prot, grasas].filter(Boolean).join(" ");
-    const cal = c.calificacion ? ` [${c.calificacion}]` : "";
-    prompt += `${i + 1}. ${fecha} ${hora} | ${c.tipoComida || "Comida"} | ${c.nombre || "Sin nombre"} | ${kcal}${macros ? ` | ${macros}` : ""}${cal}\n`;
-  });
+    if (!porDia.has(fecha)) porDia.set(fecha, []);
+    porDia.get(fecha)!.push(c);
+  }
+
+  prompt += `**Consumo agrupado por día (${consumos.length} registros en total, en ${porDia.size} días dentro del período):**\n`;
+  for (const [fecha, delDia] of porDia) {
+    const kcalDia = Math.round(sumarCampo(delDia, "energia"));
+    const carbDia = Math.round(sumarCampo(delDia, "carb"));
+    const protDia = Math.round(sumarCampo(delDia, "proteina"));
+    const grasaDia = Math.round(sumarCampo(delDia, "grasa"));
+    prompt += `\n${fecha} — Total del día: ${kcalDia} kcal | C:${carbDia}g P:${protDia}g G:${grasaDia}g\n`;
+    delDia.forEach((c) => {
+      const kcal = c.energia ? `${c.energia} kcal` : "sin dato kcal";
+      const carbs = c.carb ? `C:${c.carb}g` : "";
+      const prot = c.proteina ? `P:${c.proteina}g` : "";
+      const grasas = c.grasa ? `G:${c.grasa}g` : "";
+      const macros = [carbs, prot, grasas].filter(Boolean).join(" ");
+      const cal = c.calificacion ? ` [${c.calificacion}]` : "";
+      prompt += `  - ${c.tipoComida || "Comida"}: ${c.nombre || "Sin nombre"} | ${kcal}${macros ? ` | ${macros}` : ""}${cal}\n`;
+    });
+  }
+
+  const kcalTotal = Math.round(sumarCampo(consumos, "energia"));
+  const carbTotal = Math.round(sumarCampo(consumos, "carb"));
+  const protTotal = Math.round(sumarCampo(consumos, "proteina"));
+  const grasaTotal = Math.round(sumarCampo(consumos, "grasa"));
+  const kcalPromedioDia = porDia.size > 0 ? Math.round(kcalTotal / porDia.size) : 0;
+  prompt += `\n**Totales de todo el período:** ${kcalTotal} kcal | C:${carbTotal}g P:${protTotal}g G:${grasaTotal}g `;
+  prompt += `(promedio de ${kcalPromedioDia} kcal/día en ${porDia.size} días)\n`;
+
+  prompt += `\nIMPORTANTE: Basá el análisis en el consumo total de cada día y en la tendencia de todo el período — `;
+  prompt += `NO te enfoques en horarios puntuales de cada comida, sino en qué y cuánto se comió en conjunto por `;
+  prompt += `día, y cómo varía o se mantiene esa alimentación a lo largo del rango de fechas consultado.\n`;
 
   if (perfil) {
     prompt += `\n**Perfil del usuario:**\n`;
@@ -57,19 +89,29 @@ function construirPromptPatron(
   prompt += `
 Respondé ÚNICAMENTE con el siguiente JSON (sin texto antes ni después):
 {
-  "analisis": "Análisis narrativo del patrón alimenticio, máximo 250 palabras, en español. Incluye observaciones sobre distribución de comidas, balance de macronutrientes, consistencia y tendencias.",
+  "analisis": "Análisis narrativo del patrón alimenticio, máximo 250 palabras, en español. Incluye observaciones sobre distribución de comidas, balance de macronutrientes, consistencia entre días y tendencias del período.",
   "resumen": {
     "puntosFuertes": ["punto 1", "punto 2"],
     "puntosDébiles": ["punto 1", "punto 2"],
     "recomendaciones": ["recomendación 1", "recomendación 2", "recomendación 3"]
   },
-  "calificacionGeneral": "[MUY_SALUDABLE|EQUILIBRADA|POCO_NUTRITIVA]"
+  "puntuacionGeneral": 0
 }
 
 Reglas:
 - "analisis": texto corrido, sin listas, máximo 250 palabras
 - Cada lista de resumen: entre 2 y 4 ítems concisos
-- "calificacionGeneral": SOLO uno de esos tres valores exactos entre corchetes
+- "puntuacionGeneral": entero de 0 a 100 (uso interno) que refleje la calidad del patrón alimenticio en TODO el `;
+  prompt += `período (no de una comida aislada), considerando el conjunto de días, el objetivo del usuario y sus `;
+  prompt += `restricciones. Guía de rangos (NO reserves el rango alto solo para un patrón perfecto):\n`;
+  prompt += `  - 70-100: patrón mayoritariamente saludable y razonablemente consistente entre días, que favorece `;
+  prompt += `o es neutral respecto al objetivo del usuario, sin violar ninguna restricción dietética en el período.\n`;
+  prompt += `  - 41-69: patrón razonable pero con inconsistencias notables entre días (ej: días muy desbalanceados `;
+  prompt += `frente a otros buenos), o que nutricionalmente es aceptable pero no colabora demasiado con el objetivo `;
+  prompt += `sin llegar a contradecirlo.\n`;
+  prompt += `  - 0-40: patrón con carencias nutricionales relevantes y sostenidas en varios días, o que contradice `;
+  prompt += `claramente el objetivo declarado, o que viola alguna restricción dietética del usuario en uno o más `;
+  prompt += `días (en ese caso SIEMPRE debe estar en este rango, sin importar el resto).
 - Respetar estrictamente la preferencia nutricional y restricciones del perfil en TODAS las secciones
 `;
   return prompt;
@@ -118,7 +160,7 @@ export const analizarPatronAlimenticio = onCall<AnalizarPatronRequest>(
 
       const raw = JSON.parse(jsonMatch[0]);
 
-      const calificacionGeneral = extraerCalificacion(raw.calificacionGeneral ?? "");
+      const calificacionGeneral = calificacionDesdePuntuacion(`Puntuación: [${raw.puntuacionGeneral ?? ""}]`);
 
       const response: AnalizarPatronResponse = {
         analisis: String(raw.analisis || ""),

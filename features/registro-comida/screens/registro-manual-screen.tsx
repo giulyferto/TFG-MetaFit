@@ -56,6 +56,7 @@ export function RegistroManualScreen({
   );
 
   const [localFotoUri, setLocalFotoUri] = useState<string | null>(null);
+  const [comidaImagenUrlExistente, setComidaImagenUrlExistente] = useState<string | null>(null);
 
   const [fechaSeleccionada, setFechaSeleccionada] = useState<Date>(fechaInicial ?? new Date());
   const [tempFecha, setTempFecha] = useState<Date>(fechaInicial ?? new Date());
@@ -109,7 +110,10 @@ export function RegistroManualScreen({
     // Guardar el ID de la comida seleccionada para usarlo en el registro
     // Esto ya se maneja en onComidasSeleccionadasChange, pero lo mantenemos por si acaso
     setComidaSeleccionadaId(comida.id);
-    
+
+    // Reutilizar la imagen ya guardada de esta comida, si tiene una
+    setComidaImagenUrlExistente(comida.imagenUrl || null);
+
     // Si la comida tiene tipo, seleccionarlo también
     if (comida.tipoComida && tiposComida.includes(comida.tipoComida as TipoComida)) {
       setTipoComidaSeleccionado(comida.tipoComida as TipoComida);
@@ -174,16 +178,18 @@ export function RegistroManualScreen({
       let registroComidaId: string;
       
       const fotoFinal = localFotoUri || imagenUri;
+      // Si no se tomó/adjuntó una foto nueva, reutilizar la de la comida guardada seleccionada (si tiene)
+      const imagenUrlExistente = fotoFinal ? undefined : (comidaImagenUrlExistente || undefined);
       if (comidaSeleccionadaId) {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, fotoFinal, ingredientes, fechaSeleccionada);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaSeleccionadaId, fotoFinal, ingredientes, fechaSeleccionada, imagenUrlExistente);
       } else if (guardarComida) {
         const comidaId = await guardarComidaComoPlantilla(datosParaGuardar);
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, fotoFinal, ingredientes, fechaSeleccionada);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, comidaId, fotoFinal, ingredientes, fechaSeleccionada, imagenUrlExistente);
       } else {
-        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes, fechaSeleccionada);
+        registroComidaId = await guardarComidaEnDiario(datosParaGuardar, tipoComidaSeleccionado, undefined, fotoFinal, ingredientes, fechaSeleccionada, imagenUrlExistente);
       }
 
-      setPendingImagenUrl(fotoFinal || null);
+      setPendingImagenUrl(fotoFinal || imagenUrlExistente || null);
 
       if (onAgregarAlDiarioPress) {
         onAgregarAlDiarioPress(datosParaGuardar, tipoComidaSeleccionado, registroComidaId, ingredientes);
@@ -463,6 +469,7 @@ export function RegistroManualScreen({
                 setComidasSeleccionadas(ids);
                 if (ids.length === 0) {
                   setComidaSeleccionadaId(null);
+                  setComidaImagenUrlExistente(null);
                 } else {
                   setComidaSeleccionadaId(ids[ids.length - 1]);
                 }

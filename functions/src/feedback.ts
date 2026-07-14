@@ -9,7 +9,7 @@ import {
   IngredienteFeedback,
   PerfilNutricional,
 } from "./types";
-import { extraerCalificacion } from "./utils";
+import { calificacionDesdePuntuacion } from "./utils";
 
 /**
  * Genera feedback nutricional usando OpenAI
@@ -45,17 +45,17 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
               "Eres un nutricionista experto que proporciona feedback nutricional personalizado. " +
               "Tu respuesta debe ser BREVE, clara y concisa (máximo 150 palabras). " +
               "Usa formato markdown con **texto en negrita** solo para los títulos de sección. " +
-              "Responde siempre en español y asegúrate de incluir la calificación al final. " +
+              "Responde siempre en español y asegúrate de incluir la puntuación numérica al final. " +
               "IMPORTANTE: Si se lista el desglose de ingredientes, analiza ÚNICAMENTE en base a esos ingredientes exactos. " +
               "No asumas ni inferras ingredientes que no estén explícitamente listados. " +
               "REGLA INQUEBRANTABLE: si el nombre del plato o alguno de sus ingredientes contradice una restricción " +
               "dietética indicada por el usuario (por ejemplo contiene carne cuando el usuario es vegetariano/vegano, " +
-              "o contiene gluten/lactosa cuando el usuario lo restringe), la calificación NUNCA puede ser " +
-              "[MUY_SALUDABLE] ni [EQUILIBRADA] sin importar cuán buenos sean los macros — debe ser [POCO_NUTRITIVA], " +
-              "y el texto debe mencionar explícitamente ese conflicto con la restricción. " +
-              "Si NO hay ningún conflicto con las restricciones, NO las menciones en la respuesta bajo ningún " +
-              "motivo — ni para aclarar que 'no aplican' ni de ninguna otra forma. El usuario ya sabe cuáles son " +
-              "sus restricciones; solo hace falta hablar de ellas cuando realmente se violan.",
+              "o contiene gluten/lactosa cuando el usuario lo restringe), la puntuación NUNCA puede ser mayor a 40 " +
+              "sin importar cuán buenos sean los macros, y el texto debe mencionar explícitamente ese conflicto " +
+              "con la restricción. Si NO hay ningún conflicto con las restricciones, NO las menciones en la " +
+              "respuesta bajo ningún motivo — ni para aclarar que 'no aplican' ni de ninguna otra forma. El " +
+              "usuario ya sabe cuáles son sus restricciones; solo hace falta hablar de ellas cuando realmente " +
+              "se violan.",
           },
           {
             role: "user",
@@ -68,8 +68,8 @@ export const generarFeedbackNutricional = onCall<FeedbackRequest>(
 
       const respuesta = completion.choices[0]?.message?.content || "";
 
-      // Extraer la calificación del feedback
-      const calificacion = extraerCalificacion(respuesta);
+      // Extraer la puntuación numérica del feedback y traducirla a calificación
+      const calificacion = calificacionDesdePuntuacion(respuesta);
 
       const feedback: FeedbackResponse = {
         texto: respuesta,
@@ -177,41 +177,37 @@ function construirPrompt(
     prompt += ` Sugiere mejoras específicas.`;
   }
   prompt += `\n\n`;
-  prompt += `4. **Calificación** (OBLIGATORIO al final, en una línea separada):\n`;
-  prompt += `   Usa estos criterios para decidir (NO reserves [MUY_SALUDABLE] solo para comidas perfectas). `;
-  prompt += `La calificación debe considerar TANTO la calidad nutricional general COMO qué tan bien esta comida `;
-  prompt += `puntual ayuda al objetivo del usuario — no son cosas separadas:\n`;
-  prompt += `   - [MUY_SALUDABLE]: mayoritariamente ingredientes frescos/integrales, buen aporte de proteína `;
-  prompt += `Y/O fibra (con UNA de las dos alcanza, no hace falta que sobresalgan ambas), sin excesos evidentes de `;
-  prompt += `azúcares añadidos, grasas saturadas o ultraprocesados; SIN violar ninguna restricción dietética; Y además `;
-  prompt += `favorece o es neutral respecto al objetivo del usuario (ej: si el objetivo es "Perder peso" o "Reducir `;
-  prompt += `grasa corporal", no debería ser excesiva en calorías/grasa para el tipo de comida; si es "Ganar masa `;
-  prompt += `muscular", debería aportar proteína razonable). No hace falta que sea impecable: un plato alto en `;
-  prompt += `proteína magra y bajo en procesados sigue siendo [MUY_SALUDABLE] aunque tenga pocos vegetales o le `;
-  prompt += `falte algo de fibra — eso es a lo sumo una sugerencia de mejora, NO motivo para bajarlo a [EQUILIBRADA]. `;
-  prompt += `Ejemplo: pechuga de pollo a la parrilla con ensalada (aunque la ensalada sea escasa) es [MUY_SALUDABLE].\n`;
-  prompt += `   - [EQUILIBRADA]: reservala para cuando hay más de una carencia relevante a la vez (ej: baja en `;
-  prompt += `proteína Y baja en fibra, o algo procesada Y con exceso de algún macro), no para un plato limpio al `;
-  prompt += `que solo le falta un poco de fibra o vegetales. También aplica si es nutricionalmente buena pero no `;
-  prompt += `colabora demasiado con el objetivo declarado del usuario (sin llegar a contradecirlo). Tampoco debe `;
-  prompt += `violar ninguna restricción dietética.\n`;
-  prompt += `   - [POCO_NUTRITIVA]: predominan ultraprocesados, azúcares añadidos, grasas saturadas o sodio en `;
-  prompt += `exceso con bajo aporte nutricional real; O viola alguna restricción dietética indicada por el usuario; `;
-  prompt += `O contradice claramente el objetivo declarado (ej: comida muy calórica/alta en grasa cuando el objetivo `;
-  prompt += `es "Perder peso" o "Reducir grasa corporal"; comida con muy poca proteína cuando el objetivo es `;
-  prompt += `"Ganar masa muscular"). Cualquiera de estos tres casos alcanza para bajarla a [POCO_NUTRITIVA], `;
-  prompt += `sin importar cuán buenos sean los demás factores.\n`;
-  prompt += `   Debes terminar EXACTAMENTE con una de estas líneas:\n`;
-  prompt += `   - "Calificación: [MUY_SALUDABLE]"\n`;
-  prompt += `   - "Calificación: [EQUILIBRADA]"\n`;
-  prompt += `   - "Calificación: [POCO_NUTRITIVA]"\n\n`;
+  prompt += `4. **Puntuación** (OBLIGATORIO al final, en una línea separada, de uso interno — el usuario no ve `;
+  prompt += `este número tal cual, así que puede ser preciso):\n`;
+  prompt += `   Asigná un entero de 0 a 100 que refleje qué tan buena es esta comida puntual, considerando en `;
+  prompt += `conjunto: calidad nutricional general (ingredientes frescos/integrales vs. ultraprocesados, aporte `;
+  prompt += `de proteína y/o fibra, excesos de azúcares añadidos/grasas saturadas/sodio), qué tan bien ayuda al `;
+  prompt += `objetivo declarado del usuario, y si respeta sus restricciones dietéticas. Guía de rangos (NO `;
+  prompt += `reserves el rango alto solo para comidas perfectas):\n`;
+  prompt += `   - 70-100: plato mayoritariamente saludable — ingredientes frescos/integrales, buen aporte de `;
+  prompt += `proteína Y/O fibra (con UNA de las dos alcanza, no hace falta que sobresalgan ambas), sin excesos `;
+  prompt += `evidentes, sin violar ninguna restricción dietética, y que favorece o es neutral respecto al objetivo `;
+  prompt += `del usuario (ej: si el objetivo es "Perder peso" o "Reducir grasa corporal", no debería ser excesiva `;
+  prompt += `en calorías/grasa para el tipo de comida; si es "Ganar masa muscular", debería aportar proteína `;
+  prompt += `razonable). Ejemplo: pechuga de pollo a la parrilla con ensalada (aunque la ensalada sea escasa) `;
+  prompt += `debería puntuar en este rango — que le falte un poco de fibra no alcanza para bajarlo de acá.\n`;
+  prompt += `   - 41-69: opción nutricionalmente razonable pero con más de una carencia relevante a la vez `;
+  prompt += `(ej: baja en proteína Y baja en fibra, o algo procesada Y con exceso de algún macro), no un plato `;
+  prompt += `limpio al que solo le falta un poco de fibra o vegetales. También aplica si es nutricionalmente `;
+  prompt += `buena pero no colabora demasiado con el objetivo declarado del usuario (sin llegar a contradecirlo).\n`;
+  prompt += `   - 0-40: predominan ultraprocesados, azúcares añadidos, grasas saturadas o sodio en exceso con `;
+  prompt += `bajo aporte nutricional real; O viola alguna restricción dietética del usuario (en ese caso el `;
+  prompt += `puntaje SIEMPRE debe estar en este rango, sin importar los macros); O contradice claramente el `;
+  prompt += `objetivo declarado (ej: comida muy calórica/alta en grasa cuando el objetivo es "Perder peso" o `;
+  prompt += `"Reducir grasa corporal"; comida con muy poca proteína cuando el objetivo es "Ganar masa muscular").\n`;
+  prompt += `   Debes terminar EXACTAMENTE con esta línea (reemplazando XX por el número entero elegido):\n`;
+  prompt += `   "Puntuación: [XX]"\n\n`;
   prompt += `REGLAS IMPORTANTES:\n`;
   prompt += `- Sé BREVE: máximo 150 palabras en total\n`;
   prompt += `- Usa **texto en negrita** solo para los títulos de cada sección\n`;
-  prompt += `- La calificación DEBE estar al final, en una línea separada\n`;
-  prompt += `- Usa SOLO [MUY_SALUDABLE], [EQUILIBRADA] o [POCO_NUTRITIVA] - NO uses otras variantes\n`;
+  prompt += `- La puntuación DEBE estar al final, en una línea separada, en el formato exacto "Puntuación: [XX]"\n`;
   prompt += `- Si el plato contradice una restricción dietética del usuario, decilo explícitamente en la `;
-  prompt += `evaluación y la calificación debe ser [POCO_NUTRITIVA]\n`;
+  prompt += `evaluación y la puntuación debe estar entre 0 y 40\n`;
   prompt += `- Si el plato NO contradice ninguna restricción, no la menciones para nada (ni siquiera para aclarar `;
   prompt += `que "no aplica" o "no se ve afectada") — es una aclaración innecesaria que no aporta valor\n`;
   prompt += `- Responde en español\n`;
