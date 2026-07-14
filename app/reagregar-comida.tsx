@@ -12,6 +12,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from "react-native";
 
+const DefaultFoodImage = require("@/assets/images/feedback-food-image.png");
+
 type TipoComida = "Desayuno" | "Almuerzo" | "Cena" | "Snack" | "Otro";
 const TIPOS_COMIDA: TipoComida[] = ["Desayuno", "Almuerzo", "Cena", "Snack", "Otro"];
 
@@ -232,15 +234,13 @@ export default function ReagregarComidaPage() {
         {tieneIngredientes ? (
           /* ── Vista desglose por ingredientes ── */
           <>
-            {imagenUrl && !imageFailed && (
-              <Image
-                source={{ uri: imagenUrl }}
-                style={styles.heroImage}
-                contentFit="cover"
-                onError={() => setImageFailed(true)}
-                transition={300}
-              />
-            )}
+            <Image
+              source={imagenUrl && !imageFailed ? { uri: imagenUrl } : DefaultFoodImage}
+              style={styles.heroImage}
+              contentFit={imagenUrl && !imageFailed ? "cover" : "contain"}
+              onError={() => setImageFailed(true)}
+              transition={300}
+            />
 
             <View style={styles.titleCard}>
               <TextInput
@@ -311,15 +311,13 @@ export default function ReagregarComidaPage() {
         ) : (
           /* ── Vista estándar ── */
           <>
-            {imagenUrl && !imageFailed && (
-              <Image
-                source={{ uri: imagenUrl }}
-                style={styles.heroImage}
-                contentFit="cover"
-                onError={() => setImageFailed(true)}
-                transition={300}
-              />
-            )}
+            <Image
+              source={imagenUrl && !imageFailed ? { uri: imagenUrl } : DefaultFoodImage}
+              style={styles.heroImage}
+              contentFit={imagenUrl && !imageFailed ? "cover" : "contain"}
+              onError={() => setImageFailed(true)}
+              transition={300}
+            />
 
             <DetallesComidaCard datos={datosComida} onDatosChange={setDatosComida} onCalcularConIA={handleCalcularConIA} />
 

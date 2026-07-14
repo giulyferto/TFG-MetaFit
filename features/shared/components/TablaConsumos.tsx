@@ -8,6 +8,8 @@ import { useEffect, useState } from "react";
 import { ActionSheetIOS, ActivityIndicator, Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 
+const DefaultFoodImage = require("@/assets/images/feedback-food-image.png");
+
 const TIPO_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   Desayuno: { label: "Desayuno", color: "#C47A2B", bg: "rgba(228, 160, 60, 0.12)" },
   Almuerzo: { label: "Almuerzo", color: "#2B7FA8", bg: "rgba(60, 160, 210, 0.12)" },
@@ -298,13 +300,11 @@ export function TablaConsumos({
                   </View>
 
                   <View style={styles.thumbnailSlot}>
-                    {consumo.imagenUrl && (
-                      <Image
-                        source={{ uri: consumo.imagenUrl }}
-                        style={styles.thumbnail}
-                        contentFit="cover"
-                      />
-                    )}
+                    <Image
+                      source={consumo.imagenUrl ? { uri: consumo.imagenUrl } : DefaultFoodImage}
+                      style={styles.thumbnail}
+                      contentFit={consumo.imagenUrl ? "cover" : "contain"}
+                    />
                   </View>
                 </View>
 
